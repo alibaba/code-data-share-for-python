@@ -1,0 +1,1 @@
+import cds; cds.init_from_env()

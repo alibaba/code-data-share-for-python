@@ -1,0 +1,4 @@
+#[project]
+## update version when benchmarks's updated
+#version = "0.0.1"
+#dynamic = ["name", "version"]

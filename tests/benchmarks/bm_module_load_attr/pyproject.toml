@@ -1,0 +1,11 @@
+[project]
+name = "pyperformance_bm_module_load_attr"
+requires-python = ">=3.8"
+dependencies = ["pyperf"]
+urls = { repository = "https://github.com/oraluben/pyperformance" }
+#dynamic = ["version"]
+version = "0.0.1"
+
+[tool.pyperformance]
+name = "module_load_attr"
+#inherits = ".."

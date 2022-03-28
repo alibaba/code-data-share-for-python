@@ -1,0 +1,10 @@
+[project]
+name = "pyperformance_bm_import_requests"
+requires-python = ">=3.8"
+dependencies = ["pyperf"]
+urls = { repository = "https://github.com/oraluben/pyperformance" }
+version = "0.0.1"
+
+[tool.pyperformance]
+name = "pyperformance_bm_import_requests"
+extra_opts = ["requests"]
