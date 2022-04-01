@@ -97,6 +97,7 @@ jobs:
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          repository_url: ${{ env.IS_DEV && 'https://test.pypi.org/legacy/' || '' }}
+          # env is a string
+          repository_url: ${{ env.IS_DEV == 'true' && 'https://test.pypi.org/legacy/' || '' }}
           skip_existing: ${{ env.IS_DEV }}
           verbose: ${{ env.IS_DEV }}
