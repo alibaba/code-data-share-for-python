@@ -80,16 +80,69 @@ PS: Looking forward to the `PEP 683 - Immortal Objects`_.
 
 .. _PEP 683 - Immortal Objects: https://peps.python.org/pep-0683/
 
-Testing
-=======
+Building and Testing
+====================
+
+We use ``nox`` to build and test package,
+it's the only dependency and will manage essential requirements (which can be found in `pyproject.toml`).
+For local installs, ``nox`` is not necessary and pip will handle those dependencies.
+
+Build from source
+-----------------
+
+For local test and development,
+``pip install <local_package_dir>`` will just work,
+e.g.:
+
+::
+
+    git clone https://github.com/alibaba/code-data-share-for-python.git
+    pip install code-data-share-for-python
+
+Build wheels
+-------------
+
+Build wheels of different python requires conda
+to install support pythons.::
+
+    # require conda
+    nox -s build_wheel
+
+If conda is not available,
+wheel can also be generated with the ``build`` package:
+::
+
+    pip install build
+    python -m build --wheel
+
+Tests
+-----
+
+Tests can be run against the current python with venv,
+or all support python versions with conda.
+
+Functional tests
+^^^^^^^^^^^^^^^^
+
+Functional tests are under `tests/` and can be run via:
+::
+
+    nox -s tests_venv_current
+    nox -s tests_multiple_conda
+
+with venv and conda as backend, respectively.
 
 Performance tests
------------------
+^^^^^^^^^^^^^^^^^
+
+Since pyperformance relies on venv
+and seems to have issue with nested venv,
+performance tests only use conda backend.
 
 Currently, we measure two kinds of scenario:
 
-1. startup time with specific packages imported, which are subjectively selected from PyPI, in nox session ``test_import_third_party``;
-2. pyperformance test w./w.o. cds.
+1. startup time with specific packages imported, which are subjectively selected from PyPI: ``nox -s test_import_third_party``;
+2. pyperformance test w./w.o. cds: ``nox -s pyperformance``
     - We use a fork of pyperformance (https://github.com/oraluben/pyperformance/tree/cds) to run test with cds, a long
       term plan is to support original pyperformance to reuse their test cases.
     - pyperformance does not support custom setup required by cds, it might be feasible to specify a custom
@@ -104,4 +157,3 @@ AppCDS allows a set of application classes to be pre-processed into a shared arc
 which can then be memory-mapped at runtime to reduce startup time and memory footprint.
 
 .. _AppCDS: https://openjdk.java.net/jeps/310
-

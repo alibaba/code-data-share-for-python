@@ -245,3 +245,10 @@ def build_wheel_no_site_hook(session: nox.Session):
 
     session.install("build")
     session.run("python", "-m", "build", "--wheel", env=_site_hook_env(False))
+
+
+@nox.session(venv_backend='venv')
+def render_readme(session: nox.Session):
+    session.install('docutils')
+
+    session.run('rst2html.py', '--report=2', '--halt=2', 'README.rst', 'README.html')
