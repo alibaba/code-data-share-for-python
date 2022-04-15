@@ -1,12 +1,9 @@
 [<tag>] <One-line description of the patch>
 #
 # <tag> can be:
-#   GC        Dragonwell specific JVM GC changes
-#   Runtime   Dragonwell specific JVM runtime changes
-#   JIT       Dragonwell Just-in-Time compiler changes
-#   JFR       JFR related
-#   JWarmUp   JWarmUp related
-#   Misc      Miscellaneous changes, such as Makefile, scripts
+#   Fix			Bug fix
+#   Feature		New feature
+#   Doc			Update documents
 #
 
 Summary: <detailed description of the change>
