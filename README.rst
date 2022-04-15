@@ -40,7 +40,7 @@ Create the memory-mapped file
 ::
 
     # dumper: create archive named mod.img from mod.lst
-    python -c 'import cds.dump; import cds.dump; cds.dump.run_dump("mod.lst", "mod.img")
+    python -c 'import cds.dump; cds.dump.run_dump("mod.lst", "mod.img")'
 
 Import packages from archive
 ----------------------------
