@@ -4,6 +4,7 @@
 #   Fix			Bug fix
 #   Feature		New feature
 #   Doc			Update documents
+#   Infra		Setup infrastructure
 #
 
 Summary: <detailed description of the change>
