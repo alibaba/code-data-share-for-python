@@ -24,7 +24,6 @@ import enum
 """)
         self.assertIn("exec_module cached 'enum'", err.decode())
 
-    # a fatal error only happened in venv, with env config
     @assert_name_list_created
     @assert_archive_created
     def test_basic_cds2(self):
@@ -35,3 +34,15 @@ import cds.dump
 cds.dump.run_dump('{self.NAME_LIST}', '{self.TEST_ARCHIVE}')
 """)
         self.assert_python_source_ok('import enum', PYCDSMODE='SHARE', PYCDSARCHIVE=self.TEST_ARCHIVE)
+
+    # a fatal error only happened in venv
+    @assert_name_list_created
+    @assert_archive_created
+    def test_basic_collections(self):
+        with open(self.NAME_LIST, 'w') as f:
+            print('collections', file=f)
+        self.assert_python_source_ok(f"""
+import cds.dump
+cds.dump.run_dump('{self.NAME_LIST}', '{self.TEST_ARCHIVE}')
+""")
+        self.assert_python_source_ok('import collections', PYCDSMODE='SHARE', PYCDSARCHIVE=self.TEST_ARCHIVE)
