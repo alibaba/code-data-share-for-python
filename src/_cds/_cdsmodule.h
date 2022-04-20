@@ -2,8 +2,7 @@
 #define PYCDS__CDSMODULE_H
 
 #include <Python.h>
-#include <internal/pycore_gc.h>         // sizeof(PyGC_Head)
-#include <internal/pycore_hashtable.h>  // _Py_hashtable_t
+#include <internal/pycore_gc.h>  // sizeof(PyGC_Head)
 
 #if PY_VERSION_HEX < 0x03090000
 #error Requires CPython 3.9+.
@@ -12,6 +11,7 @@
 #include <stdbool.h>
 
 #include "clinic/_cdsmodule.c.h"
+#include "lookup_table.h"
 #include "pythoncapi_compat.h"
 
 #define CDS_MAX_IMG_SIZE (1024 * 1024 * 1024)
@@ -48,8 +48,10 @@ struct MoveInContext {
     //    int serialized_count;
     //    HeapSerializedObject *serialized_array;
 
-    _Py_hashtable_t *map_orig_pyobject_to_in_heap_pyobject;
-    _Py_hashtable_t *map_in_heap_str_to_string_ref_list;
+    int n_alloc;
+
+    table *map_orig_pyobject_to_in_heap_pyobject;
+    table *map_in_heap_str_to_string_ref_list;
 };
 
 /*
@@ -62,18 +64,14 @@ struct MoveInContext {
  * PYCDSARCHIVE)
  * 3: use archive (PYCDSMODE=SHARE, from PYCDSARCHIVE) (for debug
  * and test only)
- *
- * 6 (1 << 2 | 2): create mmap archive (PYCDSMODE=DEBUG1)
- * 7 (1 * << 2 | 3): load mmap archive (PYCDSMODE=DEBUG2)
+ * -1: manually select mode in user's code (PYCDSMODE=MANUALLY)
  */
 
 #define CDS_MODE_DISABLED (0)
 #define CDS_MODE_DUMP_LIST (1)
 #define CDS_MODE_DUMP_ARCHIVE (2)
 #define CDS_MODE_SHARE (3)
-#define CDS_MODE_DEBUG (1 << 2)
-#define CDS_MODE_DEBUG_CREATE_ARCHIVE (CDS_MODE_DEBUG | CDS_MODE_DUMP_ARCHIVE)
-#define CDS_MODE_DEBUG_LOAD_ARCHIVE (CDS_MODE_DEBUG | CDS_MODE_SHARE)
+#define CDS_MODE_MANUALLY (-1)
 
 #define ALIEN_TO(size, align) (((size) + ((align)-1)) & ~((align)-1))
 #define UNSHIFT(p, shift, ty) ((ty *)((void *)(p) + (shift)))
@@ -81,6 +79,9 @@ struct MoveInContext {
 struct CDSStatus {
     int verbose;
     int mode;
+
+    // Prevent re-entry of cds.init_from_env()
+    bool initialized;
 
     long shift;
     bool traverse_error;
@@ -93,10 +94,6 @@ struct CDSStatus {
     PyObject *flags;
 
     struct MoveInContext *move_in_ctx;
-
-    struct {
-        int n_alloc;
-    } meta;
 };
 
 void *PyCDS_Malloc(size_t);
@@ -159,7 +156,7 @@ void
 PyCDS_Verbose(int verbosity, const char *fmt, ...);
 
 PyObject *
-PyCDS_SetMode(int new_flag);
+PyCDS_SetInitializedWithMode(int new_flag);
 
 PyObject *
 PyCDS_SetVerbose(int new_flag);

@@ -22,6 +22,7 @@ static PyMethodDef CDSMethods[] = {
     _CDS__MOVE_IN_METHODDEF
     _CDS__GET_OBJ_METHODDEF
     _CDS__SET_MODE_METHODDEF
+    _CDS__GET_INITIALIZED_METHODDEF
     _CDS__SET_VERBOSE_METHODDEF
     {NULL, NULL, 0, NULL},
 };
@@ -121,17 +122,9 @@ static PyObject *
 _cds__create_archive_impl(PyObject *module, const char *archive)
 /*[clinic end generated code: output=3cfd54cfec16be94 input=374154f19d6a118a]*/
 {
-    if (cds_status.mode == CDS_MODE_DISABLED) {
-        PyCDS_SetMode(CDS_MODE_DEBUG_CREATE_ARCHIVE);
+    if (PyCDS_SetInitializedWithMode(CDS_MODE_DUMP_ARCHIVE) == NULL) {
+        return NULL;
     }
-    else if ((cds_status.mode & CDS_MODE_DUMP_ARCHIVE) ==
-             CDS_MODE_DUMP_ARCHIVE) {
-        // dump mode, good
-    }
-    else {
-        assert(false);
-    }
-
     if (PyCDS_CreateArchive(archive) == NULL) {
         return NULL;
     }
@@ -149,6 +142,9 @@ static PyObject *
 _cds__load_archive_impl(PyObject *module, const char *archive)
 /*[clinic end generated code: output=5838740b6db38d96 input=94f6b2c07d205bf5]*/
 {
+    if (PyCDS_SetInitializedWithMode(CDS_MODE_SHARE) == NULL) {
+        return NULL;
+    }
     if (PyCDS_LoadArchive(archive) == NULL) {
         return NULL;
     }
@@ -214,14 +210,36 @@ _cds._set_mode
 
     mode: int
 
-Set mode and return old mode.
+Set mode for only tracer and manual mode, from cds module.
+
+Other mode will be set by extension module.
 [clinic start generated code]*/
 
 static PyObject *
 _cds__set_mode_impl(PyObject *module, int mode)
-/*[clinic end generated code: output=ba43df118acf9262 input=5384bbfb6cef0d4d]*/
+/*[clinic end generated code: output=ba43df118acf9262 input=d774e66ec2dea0be]*/
 {
-    return PyCDS_SetMode(mode);
+    if (mode != CDS_MODE_DUMP_LIST && mode != CDS_MODE_MANUALLY) {
+        set_cds_exception_from_format(
+            "invalid mode: %d, only tracer (%d) and manual mode (%d) can be "
+            "set with _cds._set_mode.",
+            mode, CDS_MODE_DUMP_LIST, CDS_MODE_MANUALLY);
+        return NULL;
+    }
+    return PyCDS_SetInitializedWithMode(mode);
+}
+
+/*[clinic input]
+_cds._get_initialized -> bool
+
+Get if cds module is already initialized.
+[clinic start generated code]*/
+
+static int
+_cds__get_initialized_impl(PyObject *module)
+/*[clinic end generated code: output=6c0313e5323f4559 input=88a1b1ce00be4d85]*/
+{
+    return cds_status.initialized;
 }
 
 /*[clinic input]
@@ -277,7 +295,7 @@ PyCDS_CreateArchive(const char *archive)
 void *
 PyCDS_Malloc(size_t size)
 {
-    cds_status.meta.n_alloc++;
+    cds_status.move_in_ctx->n_alloc++;
     if (!size)
         size = 1;
     // Extra memory for (internal) PyGC_Head,
@@ -318,6 +336,13 @@ PyCDS_InHeap(void *p)
 void *
 PyCDS_LoadArchive(const char *archive)
 {
+    if (cds_status.archive_header != NULL) {
+        PyErr_SetString(CDSException, "archive already loaded.");
+        return NULL;
+    }
+
+    PyCDS_Verbose(1, "opening archive %s", archive);
+
     cds_status.archive = archive;
     cds_status.archive_fd = open(archive, O_RDWR);
     if (cds_status.archive_fd < 0) {
@@ -369,7 +394,9 @@ PyCDS_LoadArchive(const char *archive)
 #ifdef INTERN_HEAP_STRING
         struct StringRefList *str_refs =
             cds_status.archive_header->all_string_ref;
+        volatile int idx = 0;
         while (str_refs != NULL) {
+            idx++;
             if (PyCDS_STR_INTERNED(str_refs->str)) {
                 PyObject *heap_str = str_refs->str;
                 PyObject *borrowed_str = str_refs->str;
@@ -421,20 +448,18 @@ PyCDS_InitMoveIn()
     assert(cds_status.move_in_ctx == NULL);
     cds_status.move_in_ctx = malloc(sizeof(struct MoveInContext));
     cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject =
-        _Py_hashtable_new(_Py_hashtable_hash_ptr,
-                          _Py_hashtable_compare_direct);
+        PyCDS_Table_New();
     cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list =
-        _Py_hashtable_new(_Py_hashtable_hash_ptr,
-                          _Py_hashtable_compare_direct);
+        PyCDS_Table_New();
 }
 void
 PyCDS_FinalizeMoveIn()
 {
     assert(cds_status.move_in_ctx != NULL);
 
-    _Py_hashtable_destroy(
+    PyCDS_Table_Destroy(
         cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject);
-    _Py_hashtable_destroy(
+    PyCDS_Table_Destroy(
         cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list);
     free(cds_status.move_in_ctx);
 }
@@ -522,7 +547,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
     else if (ty == &PyUnicode_Type) {
         PyObject *res;
 
-        if ((res = _Py_hashtable_get(
+        if ((res = PyCDS_Table_Get(
                  cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
                  op)) != NULL) {
             *target = res;
@@ -623,15 +648,16 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             *target = res;
             UNTRACK(*target);
 
-            _Py_hashtable_set(
+            PyCDS_Table_Insert(
                 cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
                 op, *target);
         }
 
-        struct StringRefList *str_refs = _Py_hashtable_get(
+        struct StringRefList *str_refs = PyCDS_Table_Get(
             cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list, res);
 
         if (str_refs == NULL) {
+            PyCDS_Verbose(2, "create identity in table: %p", res);
             str_refs = PyCDS_Malloc(sizeof(struct StringRefList));
             str_refs->str = res;
             str_refs->refs = NULL;
@@ -642,7 +668,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
                 // extra rc to prevent being freed when interning
                 Py_INCREF(res);
             }
-            _Py_hashtable_set(
+            PyCDS_Table_Insert(
                 cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list,
                 res, str_refs);
         }
@@ -808,15 +834,25 @@ PyCDS_Verbose(int verbosity, const char *fmt, ...)
 }
 
 PyObject *
-PyCDS_SetMode(int new_flag)
+PyCDS_SetInitializedWithMode(int new_flag)
 {
     if (!(new_flag == CDS_MODE_DISABLED || new_flag == CDS_MODE_DUMP_ARCHIVE ||
           new_flag == CDS_MODE_DUMP_LIST || new_flag == CDS_MODE_SHARE ||
-          new_flag == CDS_MODE_DEBUG_CREATE_ARCHIVE ||
-          new_flag == CDS_MODE_DEBUG_LOAD_ARCHIVE)) {
+          new_flag == CDS_MODE_MANUALLY)) {
         set_cds_exception_from_format("invalid mode: %d.", new_flag);
         return NULL;
     }
+    else if (cds_status.initialized) {
+        if (cds_status.mode != CDS_MODE_MANUALLY) {
+            set_cds_exception_from_format(
+                "cds already initialized, current mode: %d.", cds_status.mode);
+            return NULL;
+        }
+    }
+    else {
+        cds_status.initialized = true;
+    }
+
     cds_status.mode = new_flag;
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 0));
     PyStructSequence_SET_ITEM(cds_status.flags, 0, PyLong_FromLong(new_flag));
