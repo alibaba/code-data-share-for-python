@@ -14,6 +14,7 @@ class BaseTest(CdsTestMixin, unittest.TestCase):
             '_get_obj',
             '_set_mode',
             '_set_verbose',
+            '_get_initialized',
             'CDSException',
             'flags',
         })

@@ -5,7 +5,7 @@ from tests import CdsTestMixin
 
 class TestFlags(CdsTestMixin, unittest.TestCase):
     def test_set_mode(self):
-        valid_mode = [0, 1, 2, 3, 6, 7]
+        valid_mode = [1, -1]
         invalid_mode = [i for i in range(-1, 10) if i not in valid_mode]
 
         for i in valid_mode:

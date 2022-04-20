@@ -18,7 +18,7 @@ import pytest
 with pytest.raises(_cds.CDSException) as e:
     _cds._create_archive("{self.TEST_ARCHIVE}")
     _cds._create_archive("{self.TEST_ARCHIVE}")
-e.match("archive already initialized.")
+e.match("cds already initialized.")
 """)
 
     @assert_archive_created
