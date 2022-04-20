@@ -35,7 +35,6 @@ cds.dump.run_dump('{self.NAME_LIST}', '{self.TEST_ARCHIVE}')
 """)
         self.assert_python_source_ok('import enum', PYCDSMODE='SHARE', PYCDSARCHIVE=self.TEST_ARCHIVE)
 
-    # a fatal error only happened in venv
     @assert_name_list_created
     @assert_archive_created
     def test_basic_collections(self):

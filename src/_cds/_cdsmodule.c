@@ -394,9 +394,7 @@ PyCDS_LoadArchive(const char *archive)
 #ifdef INTERN_HEAP_STRING
         struct StringRefList *str_refs =
             cds_status.archive_header->all_string_ref;
-        volatile int idx = 0;
         while (str_refs != NULL) {
-            idx++;
             if (PyCDS_STR_INTERNED(str_refs->str)) {
                 PyObject *heap_str = str_refs->str;
                 PyObject *borrowed_str = str_refs->str;
