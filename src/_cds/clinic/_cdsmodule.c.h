@@ -140,7 +140,9 @@ PyDoc_STRVAR(_cds__set_mode__doc__,
 "_set_mode($module, /, mode)\n"
 "--\n"
 "\n"
-"Set mode and return old mode.");
+"Set mode for only tracer and manual mode, from cds module.\n"
+"\n"
+"Other mode will be set by extension module.");
 
 #define _CDS__SET_MODE_METHODDEF    \
     {"_set_mode", (PyCFunction)(void(*)(void))_cds__set_mode, METH_FASTCALL|METH_KEYWORDS, _cds__set_mode__doc__},
@@ -166,6 +168,34 @@ _cds__set_mode(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyObje
         goto exit;
     }
     return_value = _cds__set_mode_impl(module, mode);
+
+exit:
+    return return_value;
+}
+
+PyDoc_STRVAR(_cds__get_initialized__doc__,
+"_get_initialized($module, /)\n"
+"--\n"
+"\n"
+"Get if cds module is already initialized.");
+
+#define _CDS__GET_INITIALIZED_METHODDEF    \
+    {"_get_initialized", (PyCFunction)_cds__get_initialized, METH_NOARGS, _cds__get_initialized__doc__},
+
+static int
+_cds__get_initialized_impl(PyObject *module);
+
+static PyObject *
+_cds__get_initialized(PyObject *module, PyObject *Py_UNUSED(ignored))
+{
+    PyObject *return_value = NULL;
+    int _return_value;
+
+    _return_value = _cds__get_initialized_impl(module);
+    if ((_return_value == -1) && PyErr_Occurred()) {
+        goto exit;
+    }
+    return_value = PyBool_FromLong((long)_return_value);
 
 exit:
     return return_value;
@@ -205,4 +235,4 @@ _cds__set_verbose(PyObject *module, PyObject *const *args, Py_ssize_t nargs, PyO
 exit:
     return return_value;
 }
-/*[clinic end generated code: output=5bce1d045ce2904b input=a9049054013a1b77]*/
+/*[clinic end generated code: output=df38bb0fb1b336cd input=a9049054013a1b77]*/

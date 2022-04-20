@@ -133,6 +133,10 @@ class CDSFinder:
 
 
 def init_from_env():
+    if _cds._get_initialized():
+        _verbose('cds.init_from_env re-entered', 1)
+        return
+
     MODE_KEY = 'PYCDSMODE'
 
     verbosity = os.environ.get('PYCDSVERBOSE', None)
@@ -162,3 +166,6 @@ def init_from_env():
                 share(archive)
             else:
                 _verbose('archive is required for loader, ignoring.', 1)
+        elif mode == 'MANUALLY':
+            from _cds import _set_mode
+            _set_mode(-1)

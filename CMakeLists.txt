@@ -7,7 +7,7 @@ find_package(PythonExtensions REQUIRED)
 
 add_compile_definitions(Py_BUILD_CORE)  # for sizeof(PyGC_Head)
 
-add_library(_cds MODULE src/_cds/_cdsmodule.c)
+add_library(_cds MODULE src/_cds/_cdsmodule.c src/_cds/lookup_table.c)
 python_extension_module(_cds)
 
 # todo: if find cpython repo, run clinic
