@@ -20,7 +20,6 @@ if __name__ == "__main__":
 
     runner.metadata['description'] = "Performance of import statement of different packages."
     args = runner.parse_args()
-    print(args, flush=True)
 
     package = PACKAGES[args.package] or args.package
 
@@ -39,7 +38,9 @@ if __name__ == "__main__":
 
         run(command, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': 'test.lst'}, stdout=DEVNULL, stderr=DEVNULL)
     else:
-        command[2] = f'import cds; cds.share("test.img"); ' + command[2]
-        os.environ.pop('PYCDSMODE')
-        os.environ.pop('PYCDSARCHIVE')
+        # command[2] = f'import cds; cds.share("test.img"); ' + command[2]
+        os.environ['PYCDSMODE'] = 'SHARE'
+        os.environ['PYCDSARCHIVE'] = 'test.img'
+        # os.environ.pop('PYCDSMODE')
+        # os.environ.pop('PYCDSARCHIVE')
         runner.bench_command(f'import_{package}', command)

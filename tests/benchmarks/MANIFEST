@@ -1,0 +1,6 @@
+[benchmarks]
+
+name	metafile
+
+module_load_attr	<local>
+import_requests	<local:import>

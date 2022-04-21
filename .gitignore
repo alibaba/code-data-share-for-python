@@ -180,3 +180,5 @@ _skbuild/
 # Perf data
 *.json
 *.json.old
+
+README.html
