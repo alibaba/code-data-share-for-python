@@ -157,6 +157,7 @@ def init_from_env():
         if mode == 'TRACE':
             if class_list is not None:
                 trace(class_list)
+                return
             else:
                 _verbose('class list is required for tracer, ignoring.', 1)
         elif mode == 'DUMP':
@@ -164,8 +165,13 @@ def init_from_env():
         elif mode == 'SHARE':
             if archive is not None:
                 share(archive)
+                return
             else:
                 _verbose('archive is required for loader, ignoring.', 1)
         elif mode == 'MANUALLY':
             from _cds import _set_mode
             _set_mode(-1)
+            return
+
+    from _cds import _set_mode
+    _set_mode(0)

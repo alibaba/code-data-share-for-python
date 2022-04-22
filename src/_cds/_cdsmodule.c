@@ -219,11 +219,13 @@ static PyObject *
 _cds__set_mode_impl(PyObject *module, int mode)
 /*[clinic end generated code: output=ba43df118acf9262 input=d774e66ec2dea0be]*/
 {
-    if (mode != CDS_MODE_DUMP_LIST && mode != CDS_MODE_MANUALLY) {
+    if (mode != CDS_MODE_DISABLED && mode != CDS_MODE_DUMP_LIST &&
+        mode != CDS_MODE_DUMP_ARCHIVE && mode != CDS_MODE_MANUALLY) {
         set_cds_exception_from_format(
-            "invalid mode: %d, only tracer (%d) and manual mode (%d) can be "
-            "set with _cds._set_mode.",
-            mode, CDS_MODE_DUMP_LIST, CDS_MODE_MANUALLY);
+            "invalid mode: %d, only disabled (%d), tracer (%d), dumper (%d) "
+            "and manual mode (%d) can be set with _cds._set_mode.",
+            mode, CDS_MODE_DISABLED, CDS_MODE_DUMP_LIST, CDS_MODE_DUMP_ARCHIVE,
+            CDS_MODE_MANUALLY);
         return NULL;
     }
     return PyCDS_SetInitializedWithMode(mode);
@@ -841,7 +843,13 @@ PyCDS_SetInitializedWithMode(int new_flag)
         return NULL;
     }
     else if (cds_status.initialized) {
-        if (cds_status.mode != CDS_MODE_MANUALLY) {
+        if (cds_status.mode == CDS_MODE_MANUALLY ||
+            (cds_status.mode == CDS_MODE_DISABLED &&
+             new_flag == CDS_MODE_DUMP_ARCHIVE)) {
+            // good, supposed to change mode after initialization
+            PyCDS_Verbose(1, "change mode after initialization");
+        }
+        else {
             set_cds_exception_from_format(
                 "cds already initialized, current mode: %d.", cds_status.mode);
             return NULL;
