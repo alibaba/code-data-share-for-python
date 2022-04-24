@@ -9,7 +9,7 @@ for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
     i.unlink()
 
 setup(
-    name='code-data-share-for-python',
+    name='code-data-share',
     version='0.0.1',
     packages=['cds'],
     package_dir={'': 'src'},
