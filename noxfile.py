@@ -18,6 +18,7 @@ RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
 DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
+CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@3aa8e416def5b02cce3a70835260680e8d6ee465'
 
 
 def _site_hook_env(without_site_hook=False):
@@ -182,7 +183,7 @@ def test_import_third_party_perf(session: nox.Session, package):
 
 
 def _pyperformance(session: nox.Session, pyperformance_args=None):
-    session.install('git+https://github.com/oraluben/pyperformance.git@cds')
+    session.install(CDS_PYPERFORMANCE)
 
     configs = [
         (os.path.realpath(f'pyperformance-{_py_version(session)}-{config_name}.json'), config_args)
