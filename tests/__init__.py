@@ -1,8 +1,8 @@
 import functools
 import os
 import random
-import typing
 import unittest
+from collections import namedtuple
 
 from test.support.script_helper import assert_python_ok, assert_python_failure
 
@@ -89,19 +89,7 @@ def random_float():
     return f
 
 
-def is_shared(address: typing.Union[str, int]):
+def is_shared(address: t.Union[str, int]):
     if isinstance(address, int):
         address = hex(address)
     return len(address) == len('0x280000000') and address.startswith('0x28')
-
-
-# todo
-class CDSRunner:
-    def __init__(self, case: unittest.TestCase):
-        self.case = case
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
