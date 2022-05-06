@@ -35,13 +35,15 @@ class ShareObjectTestMixin(CdsTestMixin):
         self.assert_python_source_ok(
             'import _cds;'
             f'_cds._create_archive("{self.TEST_ARCHIVE}");'
-            f'_cds._move_in({s})'
+            f'_cds._move_in({s})',
+            PYCDSMODE='MANUALLY',
         )
 
         out = self.assert_python_source_ok(
             'import _cds;'
             f'_cds._load_archive("{self.TEST_ARCHIVE}");'
-            'print(repr(_cds._get_obj()))'
+            'print(repr(_cds._get_obj()))',
+            PYCDSMODE='MANUALLY',
         )
         self.assertEqual(oracle, out.out.decode().strip())
 
@@ -135,7 +137,8 @@ class InternStringTest(CdsTestMixin, unittest.TestCase):
             f'_cds._create_archive("{self.TEST_ARCHIVE}");'
             f's = {repr(s)};'
             f'{"sys.intern(s);" if interned else ""}'
-            '_cds._move_in(s)'
+            '_cds._move_in(s)',
+            PYCDSMODE='MANUALLY',
         )
 
     def get_string_ids(self, s):

@@ -56,12 +56,12 @@ _cds._load_archive("{self.TEST_ARCHIVE}")
 with pytest.raises(_cds.CDSException) as e:
     _cds._get_obj()
 e.match("No object in heap.")
-""")
+""", PYCDSMODE='MANUALLY')
 
     @assert_archive_created
     def test_loaded_object(self):
         self.assert_python_source_ok(
-            f'import _cds; _cds._create_archive("{self.TEST_ARCHIVE}"); _cds._move_in((1, 2, 3))')
+            f'import _cds; _cds._create_archive("{self.TEST_ARCHIVE}"); _cds._move_in((1, 2, 3))', PYCDSMODE='MANUALLY')
 
         self.assert_python_source_ok(
             f"""
