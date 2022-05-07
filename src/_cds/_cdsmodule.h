@@ -2,10 +2,15 @@
 #define PYCDS__CDSMODULE_H
 
 #include <Python.h>
-#include <internal/pycore_gc.h>  // sizeof(PyGC_Head)
+// sizeof(PyGC_Head)
+#if PY_VERSION_HEX >= 0x03090000
+#include <internal/pycore_gc.h>
+#elif PY_VERSION_HEX >= 0x03080000
+#include <objimpl.h>
+#endif
 
-#if PY_VERSION_HEX < 0x03090000
-#error Requires CPython 3.9+.
+#if PY_VERSION_HEX < 0x03080000
+#error Requires CPython 3.8+.
 #endif
 
 #include <stdbool.h>
