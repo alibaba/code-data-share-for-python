@@ -1,8 +1,6 @@
-import functools
 import logging
 import os
 import random
-import unittest
 
 from test.support.script_helper import assert_python_ok, assert_python_failure
 
@@ -48,19 +46,6 @@ class CdsTestMixin(UtilMixin):
 
     setUp = _del_archive
     tearDown = _del_archive
-
-
-def assert_archive_created(f: t.Callable):
-    @functools.wraps(f)
-    def inner(self: unittest.TestCase):
-        self.assertIsInstance(self, CdsTestMixin)
-        self.assertNotExists(self.TEST_ARCHIVE)
-
-        f(self)
-
-        self.assertExists(self.TEST_ARCHIVE)
-
-    return inner
 
 
 def random_branch():
