@@ -56,6 +56,7 @@ class CDSFinder:
     # class-level cache
     shared_module: dict = None
     _bootstrap = None
+    _bootstrap_external = _get_bootstrap_external()
 
     @classmethod
     def init(cls, shared_module: dict):
@@ -113,7 +114,7 @@ class CDSFinder:
         with _io.FileIO(path, 'r') as file:
             return file.read()
 
-    @_get_bootstrap_external()._check_name
+    @_bootstrap_external._check_name
     def get_resource_reader(self, module):
         if sys.version_info < (3, 10, 0):
             return None

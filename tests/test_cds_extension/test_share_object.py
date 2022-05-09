@@ -1,6 +1,7 @@
 import random
 import string
 import unittest
+import sys
 
 from tests import CdsTestMixin, random_float, is_shared
 
@@ -102,7 +103,14 @@ class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
     @assert_archive_created
     def test_deep_tuple(self):
         t = (1, b'2', '3')
-        for i in range(100):
+        # The parser before "PEP 617 - New PEG parser for CPython" is weaker,
+        # we need to avoid parser stack overflow below 3.9
+        if sys.version_info > (3, 9):  # version > 3.9, include 3.9
+            loop_depth = 100
+        else:
+            loop_depth = 70
+
+        for i in range(loop_depth):
             t = (t, i, b'1')
         self.run_serialize_test(t)
 
