@@ -1,8 +1,8 @@
 import functools
+import logging
 import os
 import random
 import unittest
-from collections import namedtuple
 
 from test.support.script_helper import assert_python_ok, assert_python_failure
 
@@ -63,19 +63,6 @@ def assert_archive_created(f: t.Callable):
     return inner
 
 
-def assert_name_list_created(f: t.Callable):
-    @functools.wraps(f)
-    def inner(self: unittest.TestCase):
-        self.assertIsInstance(self, CdsTestMixin)
-        self.assertNotExists(self.NAME_LIST)
-
-        f(self)
-
-        self.assertExists(self.NAME_LIST)
-
-    return inner
-
-
 def random_branch():
     return random.choice([True, False])
 
@@ -93,3 +80,6 @@ def is_shared(address: t.Union[str, int]):
     if isinstance(address, int):
         address = hex(address)
     return len(address) == len('0x280000000') and address.startswith('0x28')
+
+
+logging.getLogger().setLevel(logging.DEBUG)

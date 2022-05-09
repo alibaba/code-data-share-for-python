@@ -1,15 +1,11 @@
 import unittest
 
-from tests import CdsTestMixin, assert_name_list_created
+from tests import CdsTestMixin
+from . import CDSCase
 
 
 class ImportTest(CdsTestMixin, unittest.TestCase):
-    @assert_name_list_created
     def test_simple_trace(self):
-        self.assert_python_source_ok(
-            f"""
-import cds
-cds.trace("{self.NAME_LIST}")
-import mod2.mod2_2
-""",
-            PYTHONPATH='tests/workspace')
+        with CDSCase(self, init_env={'PYTHONPATH': 'tests/workspace'}) as cds:
+            cds.run_trace('import mod2.mod2_2')
+            cds.verify_files(check_archive=False)

@@ -43,7 +43,7 @@ def _py_version(session: nox.Session):
 def _self_tests(session: nox.Session):
     session.install(".")
     session.install("pytest")
-    session.run('pytest', '-s')
+    session.run('pytest', )
 
 
 class Package(t.NamedTuple):
