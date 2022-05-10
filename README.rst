@@ -2,7 +2,6 @@ code-data-share-for-python
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: https://img.shields.io/pypi/pyversions/code-data-share-for-python
-   :target: https://pypi.org/project/code-data-share-for-python/
 .. image:: https://img.shields.io/pypi/implementation/code-data-share-for-python
 .. image:: https://img.shields.io/badge/platform-linux--64%20%7C%20osx--64-lightgrey
 
