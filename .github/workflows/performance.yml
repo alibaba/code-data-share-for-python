@@ -3,12 +3,10 @@ name: performance
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 
 jobs:
-  test-conda:
+  perf-import:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,6 +19,4 @@ jobs:
           python -m pip install nox pyperf
       - name: Run performance test
         run: |
-          sudo env "PATH=$PATH" pyperf system tune
-          nox -s test_import_third_party_perf
-          pyperf compare_to perf-3.8-raw.json perf-3.8-cds.json perf-3.9-raw.json perf-3.9-cds.json perf-3.10-raw.json perf-3.10-cds.json --table | tee perf.table
+          sh scripts/perf_import.sh

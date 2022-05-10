@@ -18,7 +18,7 @@ RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
 DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
-CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@ffbc041b88f82f02ea690a629cbd2c0ee893c9fe'
+CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
 
 
 def _site_hook_env(without_site_hook=False):
@@ -177,12 +177,12 @@ def test_import_third_party_perf(session: nox.Session, package):
     session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
     logger.info(f'finish generating CDS archive for {package.name}')
 
-    raw_out = f'perf-{session.python}-raw'
-    cds_out = f'perf-{session.python}-cds'
+    raw_out = f'perf-import-{session.python}-raw'
+    cds_out = f'perf-import-{session.python}-cds'
 
-    session.run('pyperf', 'command', f'--append={raw_out}.json', f'--name={package.name}',
+    session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
                 'python', '-c', package.import_stmt)
-    session.run('pyperf', 'command', f'--append={cds_out}.json', f'--name={package.name}',
+    session.run('pyperf', 'command', '--fast', f'--append={cds_out}.json', f'--name={package.name}',
                 '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
                 'python', '-c', package.import_stmt,
                 env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
