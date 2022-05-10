@@ -111,7 +111,7 @@ PACKAGES = (
 
 
 def skip_package(package: Package, python) -> bool:
-    if package.name == 'tensorflow' and python in '3.10':
+    if package.name == 'tensorflow' and python in ('3.10',):
         # conda does not have tf on python 3.10 yet
         return True
     elif package.name == 'opencv':
