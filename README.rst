@@ -35,7 +35,7 @@ Install
 -------
 ::
 
-    pip install code-data-share-for-python
+    pip install code-data-share
 
 Determine the imported packages
 -------------------------------
