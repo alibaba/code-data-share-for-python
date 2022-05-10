@@ -18,7 +18,7 @@ RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
 DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
-CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@3aa8e416def5b02cce3a70835260680e8d6ee465'
+CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@ffbc041b88f82f02ea690a629cbd2c0ee893c9fe'
 
 
 def _site_hook_env(without_site_hook=False):
@@ -114,6 +114,12 @@ def skip_package(package: Package, python) -> bool:
     if package.name == 'tensorflow' and python in '3.10':
         # conda does not have tf on python 3.10 yet
         return True
+    elif package.name == 'opencv':
+        # opencv from conda have issue in debian-based system:
+        # https://stackoverflow.com/questions/64664094/i-cannot-use-opencv2-and-received-importerror-libgl-so-1-cannot-open-shared-obj
+        # skip on linux until this can be fixed / skipped on centos / debian / alios
+        if OS == 'Linux':
+            return True
     return False
 
 
