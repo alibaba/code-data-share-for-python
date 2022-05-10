@@ -3,7 +3,9 @@ import string
 import unittest
 import sys
 
-from tests import CdsTestMixin, assert_archive_created, random_float, is_shared
+from tests import CdsTestMixin, random_float, is_shared
+
+from . import assert_archive_created
 
 # From https://stackoverflow.com/a/21666621
 include_ranges = [
@@ -36,13 +38,15 @@ class ShareObjectTestMixin(CdsTestMixin):
         self.assert_python_source_ok(
             'import _cds;'
             f'_cds._create_archive("{self.TEST_ARCHIVE}");'
-            f'_cds._move_in({s})'
+            f'_cds._move_in({s})',
+            PYCDSMODE='MANUALLY',
         )
 
         out = self.assert_python_source_ok(
             'import _cds;'
             f'_cds._load_archive("{self.TEST_ARCHIVE}");'
-            'print(repr(_cds._get_obj()))'
+            'print(repr(_cds._get_obj()))',
+            PYCDSMODE='MANUALLY',
         )
         self.assertEqual(oracle, out.out.decode().strip())
 
@@ -120,13 +124,15 @@ class ShareCodeTest(CdsTestMixin, unittest.TestCase):
             self.assert_python_source_ok(
                 'import _cds;'
                 f'_cds._create_archive("{self.TEST_ARCHIVE}");'
-                f'_cds._move_in((lambda: print(repr({r}))).__code__)'
+                f'_cds._move_in((lambda: print(repr({r}))).__code__)',
+                PYCDSMODE='MANUALLY',
             )
 
             out = self.assert_python_source_ok(
                 'import _cds;'
                 f'_cds._load_archive("{self.TEST_ARCHIVE}");'
-                'exec(_cds._get_obj())'
+                'exec(_cds._get_obj())',
+                PYCDSMODE='MANUALLY',
             )
 
             self.assertEqual(r, out.out.decode().strip())
@@ -143,7 +149,8 @@ class InternStringTest(CdsTestMixin, unittest.TestCase):
             f'_cds._create_archive("{self.TEST_ARCHIVE}");'
             f's = {repr(s)};'
             f'{"sys.intern(s);" if interned else ""}'
-            '_cds._move_in(s)'
+            '_cds._move_in(s)',
+            PYCDSMODE='MANUALLY',
         )
 
     def get_string_ids(self, s):
@@ -151,7 +158,8 @@ class InternStringTest(CdsTestMixin, unittest.TestCase):
             'import _cds;'
             f'_cds._load_archive("{self.TEST_ARCHIVE}");'
             f's1 = _cds._get_obj(); s2 = eval({repr(repr(s))});'
-            'print(repr((hex(id(s1)), hex(id(s2)))))'
+            'print(repr((hex(id(s1)), hex(id(s2)))))',
+            PYCDSMODE='MANUALLY',
         )
         return eval(out)
 

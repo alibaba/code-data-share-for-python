@@ -18,6 +18,7 @@ RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
 DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
+CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
 
 
 def _site_hook_env(without_site_hook=False):
@@ -42,7 +43,7 @@ def _py_version(session: nox.Session):
 def _self_tests(session: nox.Session):
     session.install(".")
     session.install("pytest")
-    session.run('pytest', '-s')
+    session.run('pytest', )
 
 
 class Package(t.NamedTuple):
@@ -110,12 +111,15 @@ PACKAGES = (
 
 
 def skip_package(package: Package, python) -> bool:
-    if package.name == 'tensorflow' and python == '3.10':
-        # 3.10 do not have tf binary package yet
+    if package.name == 'tensorflow' and python in ('3.10',):
+        # conda does not have tf on python 3.10 yet
         return True
-    elif package.name == 'opencv' and 'alios' in RELEASE:
-        # opencv have import issue on alios
-        return True
+    elif package.name == 'opencv':
+        # opencv from conda have issue in debian-based system:
+        # https://stackoverflow.com/questions/64664094/i-cannot-use-opencv2-and-received-importerror-libgl-so-1-cannot-open-shared-obj
+        # skip on linux until this can be fixed / skipped on centos / debian / alios
+        if OS == 'Linux':
+            return True
     return False
 
 
@@ -139,9 +143,9 @@ def test_import_third_party(session: nox.Session, package):
     lst = os.path.join(tmp, 'test.lst')
     img = os.path.join(tmp, 'test.img')
 
-    session.run('python', '-c', f'import cds; cds.trace("{lst}"); {package.import_stmt}')
+    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst})
     session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")')
-    session.run('python', '-c', f'import cds; cds.share("{img}"); {package.import_stmt}')
+    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
 
 @nox.session
@@ -168,23 +172,24 @@ def test_import_third_party_perf(session: nox.Session, package):
     img = os.path.join(tmp, 'test.img')
 
     logger.info(f'start generating CDS archive for {package.name}')
-    session.run('python', '-c', f'import cds; cds.trace("{lst}"); ' + package.import_stmt, log=False)
+    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst}, log=False)
     session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")', log=False)
-    session.run('python', '-c', f'import cds; cds.share("{img}"); ' + package.import_stmt, log=False)
+    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
     logger.info(f'finish generating CDS archive for {package.name}')
 
-    raw_out = f'perf-{session.python}-raw'
-    cds_out = f'perf-{session.python}-cds'
+    raw_out = f'perf-import-{session.python}-raw'
+    cds_out = f'perf-import-{session.python}-cds'
 
-    session.run('pyperf', 'command', f'--append={raw_out}.json', f'--name={package.name}',
+    session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
                 'python', '-c', package.import_stmt)
-    session.run('pyperf', 'command', f'--append={cds_out}.json', f'--name={package.name}',
-                'python', '-c',
-                f'import cds; cds.share("{img}"); ' + package.import_stmt)
+    session.run('pyperf', 'command', '--fast', f'--append={cds_out}.json', f'--name={package.name}',
+                '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
+                'python', '-c', package.import_stmt,
+                env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
 
 def _pyperformance(session: nox.Session, pyperformance_args=None):
-    session.install('git+https://github.com/oraluben/pyperformance.git@cds')
+    session.install(CDS_PYPERFORMANCE)
 
     configs = [
         (os.path.realpath(f'pyperformance-{_py_version(session)}-{config_name}.json'), config_args)

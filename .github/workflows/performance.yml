@@ -1,0 +1,22 @@
+name: performance
+
+on:
+  push:
+    branches: [ main ]
+
+
+jobs:
+  perf-import:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: s-weigand/setup-conda@v1
+      - run: conda --version
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install nox pyperf
+      - name: Run performance test
+        run: |
+          sh scripts/perf_import.sh

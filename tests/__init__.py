@@ -1,8 +1,6 @@
-import functools
+import logging
 import os
 import random
-import typing
-import unittest
 
 from test.support.script_helper import assert_python_ok, assert_python_failure
 
@@ -50,32 +48,6 @@ class CdsTestMixin(UtilMixin):
     tearDown = _del_archive
 
 
-def assert_archive_created(f: t.Callable):
-    @functools.wraps(f)
-    def inner(self: unittest.TestCase):
-        self.assertIsInstance(self, CdsTestMixin)
-        self.assertNotExists(self.TEST_ARCHIVE)
-
-        f(self)
-
-        self.assertExists(self.TEST_ARCHIVE)
-
-    return inner
-
-
-def assert_name_list_created(f: t.Callable):
-    @functools.wraps(f)
-    def inner(self: unittest.TestCase):
-        self.assertIsInstance(self, CdsTestMixin)
-        self.assertNotExists(self.NAME_LIST)
-
-        f(self)
-
-        self.assertExists(self.NAME_LIST)
-
-    return inner
-
-
 def random_branch():
     return random.choice([True, False])
 
@@ -89,19 +61,10 @@ def random_float():
     return f
 
 
-def is_shared(address: typing.Union[str, int]):
+def is_shared(address: t.Union[str, int]):
     if isinstance(address, int):
         address = hex(address)
     return len(address) == len('0x280000000') and address.startswith('0x28')
 
 
-# todo
-class CDSRunner:
-    def __init__(self, case: unittest.TestCase):
-        self.case = case
-
-    def __enter__(self):
-        pass
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+logging.getLogger().setLevel(logging.DEBUG)

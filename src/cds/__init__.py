@@ -75,7 +75,12 @@ class CDSFinder:
             _verbose(f"find_spec missed '{fullname}'", 1)
             return None
         # t0 = time.time()
-        package, file, path, code = cls.shared_module[fullname]
+
+        # notice: if one package got re-imported via cds,
+        # we assume it has some magic import logic,
+        # e.g. opencv: https://github.com/opencv/opencv/blob/c8228e5789510ec26378eceb17311dd7bddf0b33/modules/python/package/cv2/__init__.py#L151-L155
+        # so we only use cds in the first time to fall back to python's import.
+        package, file, path, code = cls.shared_module.pop(fullname)
         loader = cls(fullname, code, file)
         is_package = path is not None
         spec = cls._bootstrap.ModuleSpec(fullname, loader, origin=file,
@@ -103,8 +108,8 @@ class CDSFinder:
         return None
 
     def exec_module(self, module):
-        _verbose(f"exec_module cached '{self.name}'", 2)
-        self.__class__._bootstrap._call_with_frames_removed(exec, self.code, module.__dict__)
+        _verbose(f"exec_module cached '{self.name}'", 1)
+        exec(self.code, module.__dict__)
 
     # Start of importlib.FileLoader interface.
     # noinspection PyMethodMayBeStatic
@@ -158,6 +163,7 @@ def init_from_env():
         if mode == 'TRACE':
             if class_list is not None:
                 trace(class_list)
+                return
             else:
                 _verbose('class list is required for tracer, ignoring.', 1)
         elif mode == 'DUMP':
@@ -165,8 +171,13 @@ def init_from_env():
         elif mode == 'SHARE':
             if archive is not None:
                 share(archive)
+                return
             else:
                 _verbose('archive is required for loader, ignoring.', 1)
         elif mode == 'MANUALLY':
             from _cds import _set_mode
             _set_mode(-1)
+            return
+
+    from _cds import _set_mode
+    _set_mode(0)

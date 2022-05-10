@@ -36,7 +36,7 @@ def run_dump(class_list: str, archive: str):
         def wrap_exec_module(self, module):
             # module may override __name__ (e.g. _collections_abc) so we get that before exec_module
             name = module.__name__
-            _verbose(f"{self.__class__.__name__}.exec_module('{module.__name__}')", 2)
+            _verbose(f"{self.__class__.__name__}.exec_module('{module.__name__}')", 1)
             orig_exec_module(self, module)
             package, file, path = (
                 getattr(module, i, None) for i in

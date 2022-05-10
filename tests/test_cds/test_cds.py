@@ -1,47 +1,34 @@
 import unittest
 
-from tests import CdsTestMixin, assert_archive_created, assert_name_list_created
+from tests import CdsTestMixin
+
+from . import CDSCase
 
 
 class CDSTest(CdsTestMixin, unittest.TestCase):
-    @assert_name_list_created
-    @assert_archive_created
     def test_basic_cds(self):
-        self.assert_python_source_ok(f"""
-import cds
-cds.trace('{self.NAME_LIST}')
-import enum
-""")
-        self.assert_python_source_ok(f"""
-import cds.dump
-cds.dump.run_dump('{self.NAME_LIST}', '{self.TEST_ARCHIVE}')
-""")
-        _, _, err = self.assert_python_source_ok(f"""
-import cds
-cds._cds._set_verbose(2)
-cds.share('{self.TEST_ARCHIVE}')
-import enum
-""")
-        self.assertIn("exec_module cached 'enum'", err.decode())
+        with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE) as cds:
+            cds.run_trace('import enum')
+            cds.run_dump()
+            cds.verify_files()
+            cds.run_share('import enum', verbose=2, save_output=True)
 
-    @assert_name_list_created
-    @assert_archive_created
+            cds.verify(lambda outputs: self.assertIn("exec_module cached 'enum'", outputs[0][2], outputs))
+
     def test_basic_cds2(self):
         with open(self.NAME_LIST, 'w') as f:
             print('enum', file=f)
-        self.assert_python_source_ok(f"""
-import cds.dump
-cds.dump.run_dump('{self.NAME_LIST}', '{self.TEST_ARCHIVE}')
-""")
-        self.assert_python_source_ok('import enum', PYCDSMODE='SHARE', PYCDSARCHIVE=self.TEST_ARCHIVE)
 
-    @assert_name_list_created
-    @assert_archive_created
+        with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE, clear_list=False) as cds:
+            cds.run_dump()
+            cds.verify_files()
+            cds.run_share('import enum')
+
     def test_basic_collections(self):
         with open(self.NAME_LIST, 'w') as f:
             print('collections', file=f)
-        self.assert_python_source_ok(f"""
-import cds.dump
-cds.dump.run_dump('{self.NAME_LIST}', '{self.TEST_ARCHIVE}')
-""")
-        self.assert_python_source_ok('import collections', PYCDSMODE='SHARE', PYCDSARCHIVE=self.TEST_ARCHIVE)
+
+        with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE, clear_list=False) as cds:
+            cds.run_dump()
+            cds.verify_files()
+            cds.run_share('import collections')
