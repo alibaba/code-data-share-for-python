@@ -1,3 +1,6 @@
+#include "lookup_table.h"
+
+#if PYCDS_HASHTABLE
 
 #include "hashtable.h"
 
@@ -150,3 +153,5 @@ hashtable_destroy(hashtable_t *ht)
     free(ht->buckets);
     free(ht);
 }
+
+#endif
