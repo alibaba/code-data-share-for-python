@@ -6,7 +6,7 @@
 table *
 PyCDS_Table_New()
 {
-    table* t = calloc(1, sizeof(table));
+    table *t = calloc(1, sizeof(table));
 #if IS_HASHTABLE && CPYTHON_HASHTABLE
     t->pyHashtable = _Py_hashtable_new(_Py_hashtable_hash_ptr,
                                        _Py_hashtable_compare_direct);
