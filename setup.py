@@ -9,7 +9,7 @@ for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
     i.unlink()
 
 setup(
-    name='code-data-share-for-python',
+    name='code-data-share',
     version='0.0.1',
     packages=['cds'],
     package_dir={'': 'src'},
@@ -21,7 +21,7 @@ setup(
         'Development Status :: 3 - Alpha',
         'Operating System :: MacOS :: MacOS X',
         # 'Operating System :: Microsoft :: Windows',
-        'Operating System :: POSIX',
+        'Operating System :: POSIX :: Linux',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
