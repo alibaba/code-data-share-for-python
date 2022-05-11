@@ -93,4 +93,4 @@ jobs:
         with:
           clang-format-version: '13'
           check-path: 'src/_cds'
-          exclude-regex: 'clinic'
+          exclude-regex: '(clinic|pythoncapi_compat)'
