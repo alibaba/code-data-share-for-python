@@ -166,9 +166,7 @@ PyCDS_SetInitializedWithMode(int new_flag);
 PyObject *
 PyCDS_SetVerbose(int new_flag);
 
-// after PEP 674 -- Disallow using macros as l-value
-// is accepted we might need to change this
-#define PyCDS_STR_INTERNED(op) PyUnicode_CHECK_INTERNED(op)
+#define PyCDS_STR_INTERNED(op) (((PyASCIIObject *)(op))->state.interned)
 
 // Formatter doesn't work well on #if inside #define,
 // so we use following function-like masks.
@@ -192,7 +190,7 @@ PyCDS_SetVerbose(int new_flag);
 #define UNWIND_CODE_FIELDS                             \
     PATCH_HANDLER(co_consts);                          \
     PATCH_HANDLER(co_names);                           \
-    PATCH_HANDLER(co_code);                            \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_code);)          \
     IF_11_OR_LATER(PATCH_HANDLER(co_exceptiontable);)  \
                                                        \
     SIMPLE_HANDLER(co_flags);                          \
@@ -202,27 +200,26 @@ PyCDS_SetVerbose(int new_flag);
     SIMPLE_HANDLER(co_posonlyargcount);                \
     SIMPLE_HANDLER(co_kwonlyargcount);                 \
     SIMPLE_HANDLER(co_stacksize);                      \
-    SIMPLE_HANDLER(co_flags);                          \
     SIMPLE_HANDLER(co_firstlineno);                    \
                                                        \
-    IF_11_OR_LATER(PATCH_HANDLER(co_localsplusnames);) \
-    IF_11_OR_LATER(PATCH_HANDLER(co_localspluskinds);) \
-    PATCH_HANDLER(co_filename);                        \
-    PATCH_HANDLER(co_name);                            \
-                                                       \
-    IF_11_OR_LATER(PATCH_HANDLER(co_qualname);)        \
-    IF_10_OR_LATER(PATCH_HANDLER(co_linetable);)       \
-    IF_11_OR_LATER(PATCH_HANDLER(co_columntable);)     \
-                                                       \
     IF_11_OR_LATER(SIMPLE_HANDLER(co_nlocalsplus);)    \
+                                                       \
     SIMPLE_HANDLER(co_nlocals);                        \
     IF_11_OR_LATER(SIMPLE_HANDLER(co_nplaincellvars);) \
     IF_11_OR_LATER(SIMPLE_HANDLER(co_ncellvars);)      \
     IF_11_OR_LATER(SIMPLE_HANDLER(co_nfreevars);)      \
                                                        \
-    PATCH_HANDLER(co_varnames);                        \
-    PATCH_HANDLER(co_freevars);                        \
-    PATCH_HANDLER(co_cellvars);                        \
+    IF_11_OR_LATER(PATCH_HANDLER(co_localsplusnames);) \
+    IF_11_OR_LATER(PATCH_HANDLER(co_localspluskinds);) \
+                                                       \
+    PATCH_HANDLER(co_filename);                        \
+    PATCH_HANDLER(co_name);                            \
+    IF_11_OR_LATER(PATCH_HANDLER(co_qualname);)        \
+    IF_10_OR_LATER(PATCH_HANDLER(co_linetable);)       \
+                                                       \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_varnames);)      \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_freevars);)      \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_cellvars);)      \
                                                        \
     /* co_lnotab in 3.9 -> co_linetable after 3.10 */  \
     IF_9_OR_EARLIER(PATCH_HANDLER(co_lnotab);)

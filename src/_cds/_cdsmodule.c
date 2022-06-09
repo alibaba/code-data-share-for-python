@@ -506,7 +506,9 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
+#if PY_MINOR_VERSION < 11
         res->ob_shash = -1;
+#endif
         memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
 
         *target = (PyObject *)res;
@@ -734,9 +736,8 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         res->co_extra = NULL;
 
 #if PY_MINOR_VERSION >= 11
-        res->co_firstinstr = (_Py_CODEUNIT *)PyBytes_AS_STRING(res->co_code);
-
-        res->co_quickened = NULL;
+        memcpy(res->co_code_adaptive, src->co_code_adaptive,
+               sizeof(src->co_code_adaptive));
 #else  // PY_MINOR_VERSION < 11
         res->co_cell2arg = cell2arg;
 
