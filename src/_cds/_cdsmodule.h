@@ -2,6 +2,13 @@
 #define PYCDS__CDSMODULE_H
 
 #include <Python.h>
+
+// adaptive interpreter things
+#if PY_MINOR_VERSION >= 11
+#include <internal/pycore_code.h>
+#include <opcode.h>
+#endif
+
 // sizeof(PyGC_Head)
 #if PY_VERSION_HEX >= 0x03090000
 #include <internal/pycore_gc.h>

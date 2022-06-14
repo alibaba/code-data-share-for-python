@@ -746,6 +746,20 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
 
 #if PY_MINOR_VERSION >= 11
         memcpy(res->co_code_adaptive, src->co_code_adaptive, code_size);
+        // This seems sufficient for cds.
+        // Clearing all CACHE ops will break something, which needs
+        // investigation.
+        for (int i = 0; i < code_count; ++i) {
+            _Py_CODEUNIT *instr =
+                &res->co_code_adaptive[i * sizeof(_Py_CODEUNIT)];
+            switch (_Py_OPCODE(*instr)) {
+                case LOAD_METHOD_NO_DICT: {
+                    // clear _PyLoadMethodCache.type_version
+                    write_u32(instr + 2, 0);
+                    break;
+                }
+            }
+        }
 #else  // PY_MINOR_VERSION < 11
         res->co_cell2arg = cell2arg;
 
