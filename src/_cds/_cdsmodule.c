@@ -128,7 +128,7 @@ _cds__create_archive_impl(PyObject *module, const char *archive)
     if (PyCDS_CreateArchive(archive) == NULL) {
         return NULL;
     }
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 /*[clinic input]
@@ -148,7 +148,7 @@ _cds__load_archive_impl(PyObject *module, const char *archive)
     if (PyCDS_LoadArchive(archive) == NULL) {
         return NULL;
     }
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 /*[clinic input]
@@ -184,7 +184,7 @@ _cds__move_in_impl(PyObject *module, PyObject *op)
         return NULL;
     }
 
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 /*[clinic input]
@@ -863,7 +863,7 @@ PyCDS_SetInitializedWithMode(int new_flag)
     cds_status.mode = new_flag;
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 0));
     PyStructSequence_SET_ITEM(cds_status.flags, 0, PyLong_FromLong(new_flag));
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 PyObject *
@@ -876,5 +876,5 @@ PyCDS_SetVerbose(int new_flag)
     cds_status.verbose = new_flag;
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 1));
     PyStructSequence_SET_ITEM(cds_status.flags, 1, PyLong_FromLong(new_flag));
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
