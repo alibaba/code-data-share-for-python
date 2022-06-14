@@ -141,6 +141,38 @@ class ShareCodeTest(CdsTestMixin, unittest.TestCase):
         test_archive_code(0)
         test_archive_code(b'')
 
+    @assert_archive_created
+    @unittest.skipUnless(sys.version_info.minor >= 11, 'test adaptive interpreter since 11')
+    def test_dis_show_caches(self):
+        def test_archive_code(o):
+            r = repr(o)
+
+            orig_dis_out = self.assert_python_source_ok(
+                'import _cds;'
+                f'_cds._create_archive("{self.TEST_ARCHIVE}");'
+                f'c = (lambda: print(repr({r}))).__code__;'
+                f'_cds._move_in(c);'
+                f'import dis;'
+                f'dis.dis(c);'
+                f'dis.dis(c, show_caches=True)',
+                PYCDSMODE='MANUALLY',
+            )
+
+            archived_dis_out = self.assert_python_source_ok(
+                'import _cds;'
+                f'_cds._load_archive("{self.TEST_ARCHIVE}");'
+                f'c = _cds._get_obj();'
+                f'import dis;'
+                'dis.dis(c);'
+                'dis.dis(c, show_caches=True)',
+                PYCDSMODE='MANUALLY',
+            )
+            self.assertEqual(orig_dis_out.out.decode(), archived_dis_out.out.decode())
+
+        test_archive_code("a" * 100)
+        test_archive_code(0)
+        test_archive_code(b'')
+
 
 class InternStringTest(CdsTestMixin, unittest.TestCase):
     def create_archive_with_string(self, s, interned: bool):

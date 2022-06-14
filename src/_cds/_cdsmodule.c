@@ -719,8 +719,17 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         }
 #endif
 
-        PyCodeObject *res =
-            (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
+        PyCodeObject *res;
+#if PY_MINOR_VERSION >= 11
+        Py_ssize_t code_count, code_size;
+        code_count = ((PyVarObject *)src)->ob_size;
+        code_size = code_count * sizeof(_Py_CODEUNIT);
+        res = (PyCodeObject *)PyCDS_Malloc(
+            offsetof(PyCodeObject, co_code_adaptive) + code_size);
+        Py_SET_SIZE(res, code_count);
+#else
+        res = (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
+#endif
         PyObject_INIT(res, &PyCode_Type);
 
 #define SIMPLE_HANDLER(field)    \
@@ -736,8 +745,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         res->co_extra = NULL;
 
 #if PY_MINOR_VERSION >= 11
-        memcpy(res->co_code_adaptive, src->co_code_adaptive,
-               sizeof(src->co_code_adaptive));
+        memcpy(res->co_code_adaptive, src->co_code_adaptive, code_size);
 #else  // PY_MINOR_VERSION < 11
         res->co_cell2arg = cell2arg;
 
