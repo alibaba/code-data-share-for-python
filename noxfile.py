@@ -212,6 +212,11 @@ def _pyperformance(session: nox.Session, pyperformance_args=None):
         session.run(*(pyperformance_args + args), f'--out={out}')
 
 
+@nox.session(venv_backend='venv')
+def pyperformance_current(session: nox.Session):
+    _pyperformance(session, ['pyperformance', 'run', '--fast'])
+
+
 @nox.session(python=SUPPORTED_PYTHONS)
 def pyperformance(session: nox.Session):
     _pyperformance(session, ['pyperformance', 'run', '--fast'])

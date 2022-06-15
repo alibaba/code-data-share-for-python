@@ -12,7 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        # https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json
+        python-version: ["3.8", "3.9", "3.10", "3.11.0-beta.3"]
 
     steps:
     - uses: actions/checkout@v2
@@ -27,6 +28,7 @@ jobs:
     - name: Test with nox
       run: |
         nox -s tests_venv_current
+        nox -s pyperformance_current
 
   test-conda:
     runs-on: ubuntu-latest
