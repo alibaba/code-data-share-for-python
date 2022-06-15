@@ -475,9 +475,9 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         return;
     }
     assert(!cds_status.traverse_error);
-    PyTypeObject *ty = op->ob_type;
+    PyTypeObject *ty = Py_TYPE(op);
 
-    PyCDS_Verbose(2, "move %s@%p into %p", op->ob_type->tp_name, op, target);
+    PyCDS_Verbose(2, "move %s@%p into %p", Py_TYPE(op)->tp_name, op, target);
 
 #define UNTRACK(obj)                \
     do {                            \
@@ -824,12 +824,12 @@ PyCDS_PatchPyObject(PyObject **ref)
         PyCDS_Verbose(2, "patching basic types.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
     }
-    else if (op->ob_type == &PyUnicode_Type) {
+    else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
     }
     else {
         PyTypeObject *ty =
-            UNSHIFT(op->ob_type, cds_status.shift, PyTypeObject);
+            UNSHIFT(Py_TYPE(op), cds_status.shift, PyTypeObject);
 
         if (/* numbers */ ty == &PyComplex_Type || ty == &PyLong_Type ||
             ty == &PyFloat_Type ||
