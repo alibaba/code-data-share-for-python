@@ -752,13 +752,32 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         for (int i = 0; i < code_count; ++i) {
             _Py_CODEUNIT *instr =
                 &res->co_code_adaptive[i * sizeof(_Py_CODEUNIT)];
+
+#define DEOPT_CACHE(version_offset, version_size)     \
+    do {                                              \
+        if ((version_size) == 1) {                    \
+            *((instr) + (version_offset)) = 0;        \
+        }                                             \
+        else if ((version_size) == 2) {               \
+            write_u32((instr) + (version_offset), 0); \
+        }                                             \
+        else {                                        \
+            assert(false);                            \
+        }                                             \
+    } while (0)
+
             switch (_Py_OPCODE(*instr)) {
+                // _PyLoadMethodCache.type_version
                 case LOAD_METHOD_NO_DICT: {
-                    // clear _PyLoadMethodCache.type_version
-                    write_u32(instr + 2, 0);
+                    DEOPT_CACHE(2, 2);
                     break;
                 }
             }
+
+#undef DEOPT_CACHE
+
+            // Stop deopt other CACHE for there seems to have some
+            // assumptions such as `assert(type_version != 0);`.
         }
 #else  // PY_MINOR_VERSION < 11
         res->co_cell2arg = cell2arg;
