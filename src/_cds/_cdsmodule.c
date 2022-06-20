@@ -745,39 +745,20 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         res->co_extra = NULL;
 
 #if PY_MINOR_VERSION >= 11
-        memcpy(res->co_code_adaptive, src->co_code_adaptive, code_size);
-        // This seems sufficient for cds.
-        // Clearing all CACHE ops will break something, which needs
-        // investigation.
+        res->co_warmup = QUICKENING_INITIAL_WARMUP_VALUE;
+
+        _Py_CODEUNIT *instructions = _PyCode_CODE(res);
+        memcpy(instructions, src->co_code_adaptive, code_size);
+
+        // codeobject.c:deopt_code()
         for (int i = 0; i < code_count; ++i) {
-            _Py_CODEUNIT *instr =
-                &res->co_code_adaptive[i * sizeof(_Py_CODEUNIT)];
-
-#define DEOPT_CACHE(version_offset, version_size)     \
-    do {                                              \
-        if ((version_size) == 1) {                    \
-            *((instr) + (version_offset)) = 0;        \
-        }                                             \
-        else if ((version_size) == 2) {               \
-            write_u32((instr) + (version_offset), 0); \
-        }                                             \
-        else {                                        \
-            assert(false);                            \
-        }                                             \
-    } while (0)
-
-            switch (_Py_OPCODE(*instr)) {
-                // _PyLoadMethodCache.type_version
-                case LOAD_METHOD_NO_DICT: {
-                    DEOPT_CACHE(2, 2);
-                    break;
-                }
+            _Py_CODEUNIT instruction = instructions[i];
+            int opcode = _PyOpcode_Original[_Py_OPCODE(instruction)];
+            int caches = _PyOpcode_Caches[opcode];
+            instructions[i] = _Py_MAKECODEUNIT(opcode, _Py_OPARG(instruction));
+            while (caches--) {
+                instructions[++i] = _Py_MAKECODEUNIT(CACHE, 0);
             }
-
-#undef DEOPT_CACHE
-
-            // Stop deopt other CACHE for there seems to have some
-            // assumptions such as `assert(type_version != 0);`.
         }
 #else  // PY_MINOR_VERSION < 11
         res->co_cell2arg = cell2arg;

@@ -35,6 +35,15 @@ class CDSTest(CdsTestMixin, unittest.TestCase):
             cds.verify_files()
             cds.run_share('import collections')
 
+    def test_basic_datetime(self):
+        with open(self.NAME_LIST, 'w') as f:
+            print('datetime', file=f)
+
+        with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE, clear_list=False) as cds:
+            cds.run_dump()
+            cds.verify_files()
+            cds.run_share('import datetime')
+
     @unittest.skipUnless(sys.version_info.minor >= 11, 'test adaptive interpreter since 11')
     def test_deopt_caches(self):
         """

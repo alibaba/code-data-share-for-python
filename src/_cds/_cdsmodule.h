@@ -6,6 +6,7 @@
 // adaptive interpreter things
 #if PY_MINOR_VERSION >= 11
 #include <internal/pycore_code.h>
+#include <internal/pycore_opcode.h>
 #include <opcode.h>
 #endif
 
@@ -201,7 +202,6 @@ PyCDS_SetVerbose(int new_flag);
     IF_11_OR_LATER(PATCH_HANDLER(co_exceptiontable);)  \
                                                        \
     SIMPLE_HANDLER(co_flags);                          \
-    IF_11_OR_LATER(SIMPLE_HANDLER(co_warmup);)         \
                                                        \
     SIMPLE_HANDLER(co_argcount);                       \
     SIMPLE_HANDLER(co_posonlyargcount);                \
