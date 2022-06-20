@@ -611,16 +611,22 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             PyCDS_STR_INTERNED(unicode) = PyCDS_STR_INTERNED(op);
             (((PyASCIIObject *)(unicode))->state).kind = kind;
             (((PyASCIIObject *)(unicode))->state).compact = 1;
+#if PY_MINOR_VERSION < 12
             (((PyASCIIObject *)(unicode))->state).ready = 1;
+#endif
             (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;
             if (is_ascii) {
                 ((char *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
                 (((PyASCIIObject *)(unicode))->wstr) = NULL;
+#endif
             }
             else if (kind == PyUnicode_1BYTE_KIND) {
                 ((char *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
                 (((PyASCIIObject *)(unicode))->wstr) = NULL;
                 (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
+#endif
                 unicode->utf8 = NULL;
                 unicode->utf8_length = 0;
             }
@@ -631,6 +637,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
                     ((Py_UCS2 *)data)[size] = 0;
                 else /* kind == PyUnicode_4BYTE_KIND */
                     ((Py_UCS4 *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
                 if (is_sharing) {
                     (((PyCompactUnicodeObject *)(unicode))->wstr_length) =
                         size;
@@ -640,6 +647,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
                     (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
                     (((PyASCIIObject *)(unicode))->wstr) = NULL;
                 }
+#endif
             }
             // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) ends
 
