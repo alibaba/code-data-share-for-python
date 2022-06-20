@@ -6,6 +6,7 @@ import platform
 import typing as t
 
 import nox
+from nox.command import CommandFailed
 from nox.virtualenv import CondaEnv
 
 nox.options.sessions = ["tests_venv_current", "tests_multiple_conda"]
@@ -206,10 +207,23 @@ def _pyperformance(session: nox.Session, pyperformance_args=None):
     if pyperformance_args is None:
         pyperformance_args = ['pyperformance', 'run']
 
+    cmd_exc = None
     for out, args in configs:
         if os.path.exists(out):
             session.run('mv', out, out + '.old')
-        session.run(*(pyperformance_args + args), f'--out={out}')
+        try:
+            session.run(*(pyperformance_args + args), f'--out={out}')
+        except CommandFailed as e:
+            if cmd_exc is None:
+                cmd_exc = e
+
+    if cmd_exc is not None:
+        raise cmd_exc
+
+
+@nox.session(venv_backend='venv')
+def pyperformance_current(session: nox.Session):
+    _pyperformance(session, ['pyperformance', 'run', '--fast'])
 
 
 @nox.session(python=SUPPORTED_PYTHONS)

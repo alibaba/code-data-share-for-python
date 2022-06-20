@@ -128,7 +128,7 @@ _cds__create_archive_impl(PyObject *module, const char *archive)
     if (PyCDS_CreateArchive(archive) == NULL) {
         return NULL;
     }
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 /*[clinic input]
@@ -148,7 +148,7 @@ _cds__load_archive_impl(PyObject *module, const char *archive)
     if (PyCDS_LoadArchive(archive) == NULL) {
         return NULL;
     }
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 /*[clinic input]
@@ -184,7 +184,7 @@ _cds__move_in_impl(PyObject *module, PyObject *op)
         return NULL;
     }
 
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 /*[clinic input]
@@ -475,9 +475,9 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         return;
     }
     assert(!cds_status.traverse_error);
-    PyTypeObject *ty = op->ob_type;
+    PyTypeObject *ty = Py_TYPE(op);
 
-    PyCDS_Verbose(2, "move %s@%p into %p", op->ob_type->tp_name, op, target);
+    PyCDS_Verbose(2, "move %s@%p into %p", Py_TYPE(op)->tp_name, op, target);
 
 #define UNTRACK(obj)                \
     do {                            \
@@ -506,7 +506,9 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
+#if PY_MINOR_VERSION < 11
         res->ob_shash = -1;
+#endif
         memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
 
         *target = (PyObject *)res;
@@ -609,16 +611,22 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             PyCDS_STR_INTERNED(unicode) = PyCDS_STR_INTERNED(op);
             (((PyASCIIObject *)(unicode))->state).kind = kind;
             (((PyASCIIObject *)(unicode))->state).compact = 1;
+#if PY_MINOR_VERSION < 12
             (((PyASCIIObject *)(unicode))->state).ready = 1;
+#endif
             (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;
             if (is_ascii) {
                 ((char *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
                 (((PyASCIIObject *)(unicode))->wstr) = NULL;
+#endif
             }
             else if (kind == PyUnicode_1BYTE_KIND) {
                 ((char *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
                 (((PyASCIIObject *)(unicode))->wstr) = NULL;
                 (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
+#endif
                 unicode->utf8 = NULL;
                 unicode->utf8_length = 0;
             }
@@ -629,6 +637,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
                     ((Py_UCS2 *)data)[size] = 0;
                 else /* kind == PyUnicode_4BYTE_KIND */
                     ((Py_UCS4 *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
                 if (is_sharing) {
                     (((PyCompactUnicodeObject *)(unicode))->wstr_length) =
                         size;
@@ -638,6 +647,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
                     (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
                     (((PyASCIIObject *)(unicode))->wstr) = NULL;
                 }
+#endif
             }
             // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) ends
 
@@ -717,8 +727,17 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         }
 #endif
 
-        PyCodeObject *res =
-            (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
+        PyCodeObject *res;
+#if PY_MINOR_VERSION >= 11
+        Py_ssize_t code_count, code_size;
+        code_count = ((PyVarObject *)src)->ob_size;
+        code_size = code_count * sizeof(_Py_CODEUNIT);
+        res = (PyCodeObject *)PyCDS_Malloc(
+            offsetof(PyCodeObject, co_code_adaptive) + code_size);
+        Py_SET_SIZE(res, code_count);
+#else
+        res = (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
+#endif
         PyObject_INIT(res, &PyCode_Type);
 
 #define SIMPLE_HANDLER(field)    \
@@ -734,9 +753,21 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         res->co_extra = NULL;
 
 #if PY_MINOR_VERSION >= 11
-        res->co_firstinstr = (_Py_CODEUNIT *)PyBytes_AS_STRING(res->co_code);
+        res->co_warmup = QUICKENING_INITIAL_WARMUP_VALUE;
 
-        res->co_quickened = NULL;
+        _Py_CODEUNIT *instructions = _PyCode_CODE(res);
+        memcpy(instructions, src->co_code_adaptive, code_size);
+
+        // codeobject.c:deopt_code()
+        for (int i = 0; i < code_count; ++i) {
+            _Py_CODEUNIT instruction = instructions[i];
+            int opcode = _PyOpcode_Original[_Py_OPCODE(instruction)];
+            int caches = _PyOpcode_Caches[opcode];
+            instructions[i] = _Py_MAKECODEUNIT(opcode, _Py_OPARG(instruction));
+            while (caches--) {
+                instructions[++i] = _Py_MAKECODEUNIT(CACHE, 0);
+            }
+        }
 #else  // PY_MINOR_VERSION < 11
         res->co_cell2arg = cell2arg;
 
@@ -782,12 +813,12 @@ PyCDS_PatchPyObject(PyObject **ref)
         PyCDS_Verbose(2, "patching basic types.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
     }
-    else if (op->ob_type == &PyUnicode_Type) {
+    else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
     }
     else {
         PyTypeObject *ty =
-            UNSHIFT(op->ob_type, cds_status.shift, PyTypeObject);
+            UNSHIFT(Py_TYPE(op), cds_status.shift, PyTypeObject);
 
         if (/* numbers */ ty == &PyComplex_Type || ty == &PyLong_Type ||
             ty == &PyFloat_Type ||
@@ -862,7 +893,7 @@ PyCDS_SetInitializedWithMode(int new_flag)
     cds_status.mode = new_flag;
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 0));
     PyStructSequence_SET_ITEM(cds_status.flags, 0, PyLong_FromLong(new_flag));
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
 
 PyObject *
@@ -875,5 +906,5 @@ PyCDS_SetVerbose(int new_flag)
     cds_status.verbose = new_flag;
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 1));
     PyStructSequence_SET_ITEM(cds_status.flags, 1, PyLong_FromLong(new_flag));
-    return Py_None;
+    return Py_NewRef(Py_None);
 }
