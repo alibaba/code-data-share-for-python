@@ -761,7 +761,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         // codeobject.c:deopt_code()
         for (int i = 0; i < code_count; ++i) {
             _Py_CODEUNIT instruction = instructions[i];
-            int opcode = _PyOpcode_Original[_Py_OPCODE(instruction)];
+            int opcode = _PyOpcode_Deopt[_Py_OPCODE(instruction)];
             int caches = _PyOpcode_Caches[opcode];
             instructions[i] = _Py_MAKECODEUNIT(opcode, _Py_OPARG(instruction));
             while (caches--) {
