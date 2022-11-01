@@ -112,8 +112,8 @@ PACKAGES = (
 
 
 def skip_package(package: Package, python) -> bool:
-    if package.name == 'tensorflow' and python in ('3.10',):
-        # conda does not have tf on python 3.10 yet
+    if package.name == 'tensorflow' and python in ('3.11',):
+        # conda does not have tf on python 3.11 yet
         return True
     elif package.name == 'opencv':
         # opencv from conda have issue in debian-based system:
@@ -124,69 +124,67 @@ def skip_package(package: Package, python) -> bool:
     return False
 
 
-@nox.session
-@nox.parametrize('python,package', [
-    (py, package) for py in SUPPORTED_PYTHONS
-    for package in PACKAGES if not skip_package(package, py)
-])
-def test_import_third_party(session: nox.Session, package):
-    """
-    Test import with / without PyCDS.
-    """
-    session.install('.')
-
-    package.install_in(session)
-
-    session.run('python', '-c', package.import_stmt)
-
-    tmp = session.create_tmp()
-
-    lst = os.path.join(tmp, 'test.lst')
-    img = os.path.join(tmp, 'test.img')
-
-    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst})
-    session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")')
-    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
+for py in SUPPORTED_PYTHONS:
+    py_id = py.replace('.', '_')
 
 
-@nox.session
-@nox.parametrize('python,package', [
-    (py, package) for py in SUPPORTED_PYTHONS
-    for package in PACKAGES if not skip_package(package, py)
-])
-def test_import_third_party_perf(session: nox.Session, package):
-    """
-    Benchmark import statements w./w.o. CDS.
+    @nox.session(name=f'test_import_third_party_{py_id}', tags=['test_import_third_party'])
+    @nox.parametrize('package', [package for package in PACKAGES if not skip_package(package, py)])
+    def test_import_third_party(session: nox.Session, package):
+        """
+        Test import with / without PyCDS.
+        """
+        session.install('.')
 
-    Generates perf-{py-ver}-{cds|raw}.json.
-    See `perf.sh`.
-    """
+        package.install_in(session)
 
-    from nox.logger import logger
-    session.install('pyperf', '.')
+        session.run('python', '-c', package.import_stmt)
 
-    package.install_in(session)
+        tmp = session.create_tmp()
 
-    tmp = session.create_tmp()
+        lst = os.path.join(tmp, 'test.lst')
+        img = os.path.join(tmp, 'test.img')
 
-    lst = os.path.join(tmp, 'test.lst')
-    img = os.path.join(tmp, 'test.img')
+        session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst})
+        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")')
+        session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
-    logger.info(f'start generating CDS archive for {package.name}')
-    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst}, log=False)
-    session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")', log=False)
-    session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
-    logger.info(f'finish generating CDS archive for {package.name}')
 
-    raw_out = f'perf-import-{session.python}-raw'
-    cds_out = f'perf-import-{session.python}-cds'
+    @nox.session(name=f'test_import_third_party_perf_{py_id}', tags=['test_import_third_party_perf'])
+    @nox.parametrize('package', [package for package in PACKAGES if not skip_package(package, py)])
+    def test_import_third_party_perf(session: nox.Session, package):
+        """
+        Benchmark import statements w./w.o. CDS.
 
-    session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
-                'python', '-c', package.import_stmt)
-    session.run('pyperf', 'command', '--fast', f'--append={cds_out}.json', f'--name={package.name}',
-                '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
-                'python', '-c', package.import_stmt,
-                env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
+        Generates perf-{py-ver}-{cds|raw}.json.
+        See `perf.sh`.
+        """
+
+        from nox.logger import logger
+        session.install('pyperf', '.')
+
+        package.install_in(session)
+
+        tmp = session.create_tmp()
+
+        lst = os.path.join(tmp, 'test.lst')
+        img = os.path.join(tmp, 'test.img')
+
+        logger.info(f'start generating CDS archive for {package.name}')
+        session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst}, log=False)
+        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")', log=False)
+        session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
+        logger.info(f'finish generating CDS archive for {package.name}')
+
+        raw_out = f'perf-import-{session.python}-raw'
+        cds_out = f'perf-import-{session.python}-cds'
+
+        session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
+                    'python', '-c', package.import_stmt)
+        session.run('pyperf', 'command', '--fast', f'--append={cds_out}.json', f'--name={package.name}',
+                    '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
+                    'python', '-c', package.import_stmt,
+                    env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
 
 def _pyperformance(session: nox.Session, pyperformance_args=None):

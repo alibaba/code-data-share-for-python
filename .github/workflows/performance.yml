@@ -18,7 +18,7 @@ jobs:
           python -m pip install nox
       - name: Test import third-party packages
         run: |
-          nox -s test_import_third_party
+          nox -t test_import_third_party
 
   perf-import:
     runs-on: ubuntu-latest
