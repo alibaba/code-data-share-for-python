@@ -12,7 +12,7 @@ from nox.virtualenv import CondaEnv
 nox.options.sessions = ["tests_venv_current", "tests_multiple_conda"]
 nox.options.default_venv_backend = 'conda'
 
-SUPPORTED_PYTHONS = ['3.8', '3.9', '3.10']
+SUPPORTED_PYTHONS = ['3.8', '3.9', '3.10', '3.11']
 
 OS = platform.system()
 RELEASE = platform.release()
