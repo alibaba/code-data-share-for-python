@@ -506,9 +506,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
-#if PY_MINOR_VERSION < 11
         res->ob_shash = -1;
-#endif
         memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
 
         *target = (PyObject *)res;
