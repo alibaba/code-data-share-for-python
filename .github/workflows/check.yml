@@ -31,8 +31,6 @@ jobs:
         python -m pip install nox
     - name: Unit tests
       run: nox -s tests_venv_current
-    - name: Fast pyperformance tests
-      run: nox -s pyperformance_current
 
   test-conda:
     runs-on: ubuntu-latest
@@ -50,6 +48,9 @@ jobs:
       - name: Test with pytest
         run: |
           nox -s tests_multiple_conda
+      - name: Test imports
+        run: |
+          nox -t test_import_third_party
 
   test-twine:
     runs-on: ubuntu-latest
