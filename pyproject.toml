@@ -5,5 +5,5 @@ requires = ["setuptools", "wheel", "scikit-build", "cmake", "ninja"]
 testpaths = ["tests"]
 
 [tool.cibuildwheel]
-build = "cp38-* cp39-* cp310-*"
+build = "cp38-* cp39-* cp310-* cp311-*"
 archs = ["auto64"]
