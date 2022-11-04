@@ -38,9 +38,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: s-weigand/setup-conda@v1
-      - run: |
-          conda config --add channels conda-forge
-          conda --version
+        with:
+          conda-channels: conda-forge
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
