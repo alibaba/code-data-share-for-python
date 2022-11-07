@@ -175,8 +175,8 @@ for py in SUPPORTED_PYTHONS:
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
         logger.info(f'finish generating CDS archive for {package.name}')
 
-        raw_out = f'perf-import-{py}-raw'
-        cds_out = f'perf-import-{py}-cds'
+        raw_out = f'perf-import-{session.python}-raw'
+        cds_out = f'perf-import-{session.python}-cds'
 
         session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
                     'python', '-c', package.import_stmt)
