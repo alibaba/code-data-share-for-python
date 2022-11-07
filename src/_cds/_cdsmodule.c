@@ -506,9 +506,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
-#if PY_MINOR_VERSION < 11
         res->ob_shash = -1;
-#endif
         memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
 
         *target = (PyObject *)res;
@@ -761,7 +759,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         // codeobject.c:deopt_code()
         for (int i = 0; i < code_count; ++i) {
             _Py_CODEUNIT instruction = instructions[i];
-            int opcode = _PyOpcode_Original[_Py_OPCODE(instruction)];
+            int opcode = _PyOpcode_Deopt[_Py_OPCODE(instruction)];
             int caches = _PyOpcode_Caches[opcode];
             instructions[i] = _Py_MAKECODEUNIT(opcode, _Py_OPARG(instruction));
             while (caches--) {
