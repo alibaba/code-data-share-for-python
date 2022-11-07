@@ -6,4 +6,9 @@ testpaths = ["tests"]
 
 [tool.cibuildwheel]
 build = "cp38-* cp39-* cp310-* cp311-*"
-archs = ["auto64"]
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "universal2", "arm64"]
