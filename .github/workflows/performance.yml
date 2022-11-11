@@ -3,8 +3,8 @@ name: performance
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    paths: [ '**.py', 'src/**' ]
+  workflow_dispatch:
 
 concurrency:
   group: "workflow = ${{ github.workflow }}, ref = ${{ github.event.ref }}, pr = ${{ github.event.pull_request.id }}"
@@ -26,3 +26,19 @@ jobs:
       - name: Perf importing third-party packages
         run: |
           sh scripts/perf_import.sh
+
+  pyperformance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: s-weigand/setup-conda@v1
+        with:
+          conda-channels: conda-forge
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install nox pyperf
+      - name: Pyperformance tests against cds
+        run: |
+          sh scripts/pyperformance.sh
