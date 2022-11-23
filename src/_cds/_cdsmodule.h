@@ -25,6 +25,7 @@
 
 #include "clinic/_cdsmodule.c.h"
 #include "lookup_table.h"
+#include "platforms.h"
 #include "pythoncapi_compat.h"
 
 #define CDS_MAX_IMG_SIZE (1024 * 1024 * 1024)
@@ -100,7 +101,7 @@ struct CDSStatus {
     bool traverse_error;
 
     const char *archive;
-    int archive_fd;
+    fd_type archive_fd;
 
     struct CDSArchiveHeader *archive_header;
 

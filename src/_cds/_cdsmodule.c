@@ -1,8 +1,6 @@
 #include "_cdsmodule.h"
 
 #include <stddef.h>
-#include <sys/fcntl.h>
-#include <sys/mman.h>
 
 #ifdef MAP_POPULATE
 #define M_POPULATE MAP_POPULATE
@@ -269,12 +267,12 @@ PyCDS_CreateArchive(const char *archive)
     }
 
     cds_status.archive = archive;
-    cds_status.archive_fd = open(archive, O_RDWR | O_CREAT | O_TRUNC, 0666);
-    if (cds_status.archive_fd < 0) {
+    cds_status.archive_fd =
+        create_archive_preallocate(archive, CDS_MAX_IMG_SIZE);
+    if (cds_status.archive_fd <= 0) {
         PyErr_SetString(CDSException, "create mmap file failed.");
         return NULL;
     }
-    ftruncate(cds_status.archive_fd, CDS_MAX_IMG_SIZE);
     void *shm =
         mmap(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE, PROT_READ | PROT_WRITE,
              MAP_SHARED, cds_status.archive_fd, 0);
