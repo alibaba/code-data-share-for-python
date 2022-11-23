@@ -175,9 +175,9 @@ _cds__move_in_impl(PyObject *module, PyObject *op)
 
     PyCDS_FinalizeMoveIn();
 
-    ftruncate(cds_status.archive_fd, cds_status.archive_header->used);
-    close(cds_status.archive_fd);
-    cds_status.archive_fd = 0;
+    finalize_map(&cds_status.archive_fd, cds_status.archive_header->used,
+                 cds_status.archive_header);
+
     if (cds_status.traverse_error) {
         return NULL;
     }
@@ -273,10 +273,9 @@ PyCDS_CreateArchive(const char *archive)
         PyErr_SetString(CDSException, "create mmap file failed.");
         return NULL;
     }
-    void *shm =
-        mmap(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE, PROT_READ | PROT_WRITE,
-             MAP_SHARED, cds_status.archive_fd, 0);
-    if (shm == MAP_FAILED) {
+    void *shm = request_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
+                                         cds_status.archive_fd);
+    if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
         return NULL;
     }

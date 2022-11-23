@@ -32,3 +32,43 @@ truncate_fd(fd_type fd, size_t size)
     SetEndOfFile(fd);
 #endif
 }
+
+void *
+request_map_from_archive(void *addr, size_t size, fd_type fd)
+{
+    void *res;
+#if IS_POSIX
+    res = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (res == MAP_FAILED || res != addr) {
+        goto fail;
+    }
+#elif IS_WINDOWS
+    HANDLE mapping = CreateFileMappingA(fd, NULL, PAGE_READWRITE | SEC_COMMIT,
+                                        0, size, NULL);
+    if (mapping == NULL) {
+        goto fail;
+    }
+    res = MapViewOfFileEx(mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
+    if (res == NULL) {
+        goto fail;
+    }
+#endif
+    return res;
+fail:
+    return NULL;
+}
+
+void
+finalize_map(fd_type *file, size_t size, void *addr)
+{
+#if IS_POSIX
+    ftruncate(*file, size);
+    close(*file);
+    *file = 0;
+#elif IS_WINDOWS
+    UnmapViewOfFile(addr);
+    truncate_fd(*file, size);
+    CloseHandle(*file);
+    *file = 0;
+#endif
+}
