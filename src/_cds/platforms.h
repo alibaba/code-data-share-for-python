@@ -27,8 +27,10 @@
 
 #if IS_POSIX
 typedef int fd_type;
+typedef(void *) ptype;
 #elif IS_WINDOWS
 typedef HANDLE fd_type;
+typedef long long ptype;
 #endif
 
 fd_type
@@ -38,9 +40,15 @@ void
 truncate_fd(fd_type fd, size_t size);
 
 void *
-request_map_from_archive(void *addr, size_t size, fd_type fd);
+create_map_from_archive(void *addr, size_t size, fd_type fd);
 
-void
-finalize_map(fd_type *file, size_t size, void *addr);
+struct CDSArchiveHeader;
+
+struct CDSArchiveHeader *
+open_archive(const char *archive, fd_type *fd,
+             struct CDSArchiveHeader *header);
+
+void *
+map_archive(fd_type file, size_t size, void *addr);
 
 #endif

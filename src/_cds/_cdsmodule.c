@@ -273,8 +273,8 @@ PyCDS_CreateArchive(const char *archive)
         PyErr_SetString(CDSException, "create mmap file failed.");
         return NULL;
     }
-    void *shm = request_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
-                                         cds_status.archive_fd);
+    void *shm = create_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
+                                        cds_status.archive_fd);
     if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
         return NULL;
@@ -309,7 +309,7 @@ PyCDS_Malloc(size_t size)
         cds_status.archive_header->used -= size_aligned;
         return NULL;
     }
-    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, res + size_aligned);
+    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, (ptype)res + size_aligned);
     return res;
 }
 
@@ -325,8 +325,8 @@ PyCDS_InHeap(void *p)
 {
     if (cds_status.archive_header) {
         if (p > cds_status.archive_header->mapped_addr &&
-            p < cds_status.archive_header->mapped_addr +
-                    cds_status.archive_header->used)
+            (ptype)p < (ptype)cds_status.archive_header->mapped_addr +
+                           cds_status.archive_header->used)
             return true;
     }
     return false;
@@ -343,31 +343,29 @@ PyCDS_LoadArchive(const char *archive)
     PyCDS_Verbose(1, "opening archive %s", archive);
 
     cds_status.archive = archive;
-    cds_status.archive_fd = open(archive, O_RDWR);
-    if (cds_status.archive_fd < 0) {
-        PyErr_SetString(CDSException, "open mmap file failed.");
-        goto fail;
-    }
-
     struct CDSArchiveHeader h;
-    if (read(cds_status.archive_fd, &h, sizeof(h)) != sizeof(h)) {
-        PyErr_SetString(CDSException, "read archive header failed.");
+    struct CDSArchiveHeader *header =
+        open_archive(cds_status.archive, &cds_status.archive_fd, &h);
+    if (header == NULL) {
+        if (cds_status.archive_fd == NULL) {
+            PyErr_SetString(CDSException, "open mmap file failed.");
+        }
+        else {
+            PyErr_SetString(CDSException, "read archive header failed.");
+        }
         goto fail;
     }
 
-    PyCDS_Verbose(2, "requesting %p...", h.mapped_addr);
     size_t aligned_size = ALIEN_TO(h.used, 4096);
     void *shm =
-        mmap(h.mapped_addr, aligned_size, PROT_READ | PROT_WRITE,
-             MAP_PRIVATE | MAP_FIXED | M_POPULATE, cds_status.archive_fd, 0);
-    if (shm == MAP_FAILED) {
+        map_archive(cds_status.archive_fd, aligned_size, h.mapped_addr);
+    if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
-        goto fail;
     }
     else if (shm != h.mapped_addr) {
         PyErr_SetString(CDSException, "mmap relocated.");
-        goto fail;
     }
+
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
     close(cds_status.archive_fd);
     cds_status.archive_fd = 0;
@@ -380,7 +378,7 @@ PyCDS_LoadArchive(const char *archive)
 
     if (cds_status.archive_header->none_addr) {
         cds_status.shift =
-            (void *)Py_None - (void *)cds_status.archive_header->none_addr;
+            (ptype)Py_None - (ptype)cds_status.archive_header->none_addr;
     }
     if (cds_status.archive_header->obj != NULL) {
         assert(!cds_status.traverse_error);

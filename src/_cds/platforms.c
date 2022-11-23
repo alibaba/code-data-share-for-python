@@ -34,7 +34,7 @@ truncate_fd(fd_type fd, size_t size)
 }
 
 void *
-request_map_from_archive(void *addr, size_t size, fd_type fd)
+create_map_from_archive(void *addr, size_t size, fd_type fd)
 {
     void *res;
 #if IS_POSIX
@@ -54,6 +54,41 @@ request_map_from_archive(void *addr, size_t size, fd_type fd)
     }
 #endif
     return res;
+fail:
+    return NULL;
+}
+
+struct CDSArchiveHeader *
+open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header)
+{
+#if IS_POSIX
+    *fd = open(archive, O_RDWR);
+    if (*fd <= 0) {
+        *fd = 0;
+        goto fail;
+    }
+    if (read(*fd, header, sizeof(*h)) != sizeof(*h)) {
+        goto fail;
+    }
+    return header;
+#elif IS_WINDOWS
+#endif
+fail:
+    return NULL;
+}
+
+void *
+map_archive(fd_type file, size_t size, void *addr)
+{
+#if IS_POSIX
+    mmap(addr, aize, PROT_READ | PROT_WRITE,
+         MAP_PRIVATE | MAP_FIXED | M_POPULATE, file, 0);
+    if (shm == MAP_FAILED) {
+        goto fail;
+    }
+    return shm;
+#elif IS_WINDOWS
+#endif
 fail:
     return NULL;
 }
