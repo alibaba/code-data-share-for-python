@@ -1,7 +1,7 @@
 #ifndef PYCDS_PLATFORMS_H
 #define PYCDS_PLATFORMS_H
 
-#ifdef __unix__
+#if defined(__unix__) || defined(__APPLE__)
 #define IS_POSIX 1
 #define IS_WINDOWS 0
 #elif defined(_WIN32) || defined(WIN32)
@@ -11,9 +11,14 @@
 #include <windows.h>
 #endif
 
+#include <stddef.h>
+
 #if IS_POSIX
+
 #include <sys/fcntl.h>
 #include <sys/mman.h>
+#include <unistd.h>
+
 #elif IS_WINDOWS
 #include <fileapi.h>
 #include <stdio.h>
