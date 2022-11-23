@@ -1,8 +1,13 @@
 #include "platforms.h"
 
+#ifdef MAP_POPULATE
+#define M_POPULATE MAP_POPULATE
+#else
+#define M_POPULATE 0
+#endif
+
 fd_type
-create_archive_preallocate(const char *name, size_t size)
-{
+create_archive_preallocate(const char *name, size_t size) {
     fd_type fd;
 #if IS_POSIX
     fd = open(name, O_RDWR | O_CREAT | O_TRUNC, 0666);
@@ -23,8 +28,7 @@ create_archive_preallocate(const char *name, size_t size)
 }
 
 void
-truncate_fd(fd_type fd, size_t size)
-{
+truncate_fd(fd_type fd, size_t size) {
 #if IS_POSIX
     ftruncate(fd, size);
 #elif IS_WINDOWS
@@ -34,8 +38,7 @@ truncate_fd(fd_type fd, size_t size)
 }
 
 void *
-create_map_from_archive(void *addr, size_t size, fd_type fd)
-{
+create_map_from_archive(void *addr, size_t size, fd_type fd) {
     void *res;
 #if IS_POSIX
     res = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -54,48 +57,45 @@ create_map_from_archive(void *addr, size_t size, fd_type fd)
     }
 #endif
     return res;
-fail:
+    fail:
     return NULL;
 }
 
 struct CDSArchiveHeader *
-open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header)
-{
+open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header, size_t header_size) {
 #if IS_POSIX
     *fd = open(archive, O_RDWR);
     if (*fd <= 0) {
         *fd = 0;
         goto fail;
     }
-    if (read(*fd, header, sizeof(*h)) != sizeof(*h)) {
+    if (read(*fd, header, header_size) != header_size) {
         goto fail;
     }
     return header;
 #elif IS_WINDOWS
 #endif
-fail:
+    fail:
     return NULL;
 }
 
 void *
-map_archive(fd_type file, size_t size, void *addr)
-{
+map_archive(fd_type file, size_t size, void *addr) {
 #if IS_POSIX
-    mmap(addr, aize, PROT_READ | PROT_WRITE,
-         MAP_PRIVATE | MAP_FIXED | M_POPULATE, file, 0);
+    void *shm = mmap(addr, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_FIXED | M_POPULATE, file, 0);
     if (shm == MAP_FAILED) {
         goto fail;
     }
     return shm;
 #elif IS_WINDOWS
 #endif
-fail:
+    fail:
     return NULL;
 }
 
 void
-finalize_map(fd_type *file, size_t size, void *addr)
-{
+finalize_map(fd_type *file, size_t size, void *addr) {
 #if IS_POSIX
     ftruncate(*file, size);
     close(*file);
