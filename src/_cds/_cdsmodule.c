@@ -62,7 +62,8 @@ static PyObject *CDSException;
 struct CDSStatus cds_status;
 
 PyMODINIT_FUNC
-PyInit__cds(void) {
+PyInit__cds(void)
+{
     PyObject *m;
     int res;
 
@@ -85,7 +86,7 @@ PyInit__cds(void) {
     PyObject *d = PyModule_GetDict(m);
 
     CDSException =
-            PyErr_NewException("_cds.CDSException", PyExc_RuntimeError, NULL);
+        PyErr_NewException("_cds.CDSException", PyExc_RuntimeError, NULL);
     Py_INCREF(CDSException);
     res = PyDict_SetItemString(d, "CDSException", CDSException);
     if (res < 0) {
@@ -155,10 +156,11 @@ _cds__move_in_impl(PyObject *module, PyObject *op)
 {
     if ((cds_status.mode & CDS_MODE_DUMP_ARCHIVE) != CDS_MODE_DUMP_ARCHIVE) {
         return NULL;
-    } else if (cds_status.archive_fd == 0) {
+    }
+    else if (cds_status.archive_fd == 0) {
         PyErr_SetString(
-                CDSException,
-                "move in already finished or archive file not opened.");
+            CDSException,
+            "move in already finished or archive file not opened.");
         return NULL;
     }
     PyCDS_InitMoveIn();
@@ -189,7 +191,8 @@ _cds__get_obj_impl(PyObject *module)
     if (cds_status.archive_header->obj == NULL) {
         PyErr_SetString(CDSException, "No object in heap.");
         return NULL;
-    } else {
+    }
+    else {
         return Py_NewRef(cds_status.archive_header->obj);
     }
 }
@@ -211,10 +214,10 @@ _cds__set_mode_impl(PyObject *module, int mode)
     if (mode != CDS_MODE_DISABLED && mode != CDS_MODE_DUMP_LIST &&
         mode != CDS_MODE_DUMP_ARCHIVE && mode != CDS_MODE_MANUALLY) {
         set_cds_exception_from_format(
-                "invalid mode: %d, only disabled (%d), tracer (%d), dumper (%d) "
-                "and manual mode (%d) can be set with _cds._set_mode.",
-                mode, CDS_MODE_DISABLED, CDS_MODE_DUMP_LIST, CDS_MODE_DUMP_ARCHIVE,
-                CDS_MODE_MANUALLY);
+            "invalid mode: %d, only disabled (%d), tracer (%d), dumper (%d) "
+            "and manual mode (%d) can be set with _cds._set_mode.",
+            mode, CDS_MODE_DISABLED, CDS_MODE_DUMP_LIST, CDS_MODE_DUMP_ARCHIVE,
+            CDS_MODE_MANUALLY);
         return NULL;
     }
     return PyCDS_SetInitializedWithMode(mode);
@@ -249,7 +252,8 @@ _cds__set_verbose_impl(PyObject *module, int mode)
 }
 
 void *
-PyCDS_CreateArchive(const char *archive) {
+PyCDS_CreateArchive(const char *archive)
+{
     if (cds_status.archive != NULL || cds_status.archive_fd != 0 ||
         cds_status.archive_header != NULL) {
         PyErr_SetString(CDSException, "archive already initialized.");
@@ -258,7 +262,7 @@ PyCDS_CreateArchive(const char *archive) {
 
     cds_status.archive = archive;
     cds_status.archive_fd =
-            create_archive_preallocate(archive, CDS_MAX_IMG_SIZE);
+        create_archive_preallocate(archive, CDS_MAX_IMG_SIZE);
     if (cds_status.archive_fd <= 0) {
         PyErr_SetString(CDSException, "create mmap file failed.");
         return NULL;
@@ -269,20 +273,21 @@ PyCDS_CreateArchive(const char *archive) {
         PyErr_SetString(CDSException, "mmap failed.");
         return NULL;
     }
-    cds_status.archive_header = (struct CDSArchiveHeader *) shm;
+    cds_status.archive_header = (struct CDSArchiveHeader *)shm;
     cds_status.archive_header->mapped_addr = shm;
     cds_status.archive_header->none_addr = Py_None;
     cds_status.archive_header->true_addr = Py_True;
     cds_status.archive_header->false_addr = Py_False;
     cds_status.archive_header->ellipsis_addr = Py_Ellipsis;
     cds_status.archive_header->used =
-            ALIEN_TO(sizeof(struct CDSArchiveHeader), 8);
+        ALIEN_TO(sizeof(struct CDSArchiveHeader), 8);
     cds_status.archive_header->all_string_ref = NULL;
     return shm;
 }
 
 void *
-PyCDS_Malloc(size_t size) {
+PyCDS_Malloc(size_t size)
+{
     cds_status.move_in_ctx->n_alloc++;
     if (!size)
         size = 1;
@@ -292,36 +297,39 @@ PyCDS_Malloc(size_t size) {
     cds_status.archive_header->used += sizeof(PyGC_Head);
     size_t size_aligned = ALIEN_TO(size, 8);
     void *res =
-            ((char *) cds_status.archive_header) + cds_status.archive_header->used;
+        ((char *)cds_status.archive_header) + cds_status.archive_header->used;
     if ((cds_status.archive_header->used += size_aligned) > CDS_MAX_IMG_SIZE) {
         cds_status.archive_header->used -= sizeof(PyGC_Head);
         cds_status.archive_header->used -= size_aligned;
         return NULL;
     }
-    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, (ptype) res + size_aligned);
+    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, (ptype)res + size_aligned);
     return res;
 }
 
 void
-PyCDS_Free(void *p) {
+PyCDS_Free(void *p)
+{
     // do nothing for now.
     assert(PyCDS_InHeap(p));
     PyCDS_Verbose(2, "Free: %p", p);
 }
 
 bool
-PyCDS_InHeap(void *p) {
+PyCDS_InHeap(void *p)
+{
     if (cds_status.archive_header) {
         if (p > cds_status.archive_header->mapped_addr &&
-            (ptype) p < (ptype) cds_status.archive_header->mapped_addr +
-                        cds_status.archive_header->used)
+            (ptype)p < (ptype)cds_status.archive_header->mapped_addr +
+                           cds_status.archive_header->used)
             return true;
     }
     return false;
 }
 
 void *
-PyCDS_LoadArchive(const char *archive) {
+PyCDS_LoadArchive(const char *archive)
+{
     if (cds_status.archive_header != NULL) {
         PyErr_SetString(CDSException, "archive already loaded.");
         return NULL;
@@ -331,12 +339,13 @@ PyCDS_LoadArchive(const char *archive) {
 
     cds_status.archive = archive;
     struct CDSArchiveHeader h;
-    struct CDSArchiveHeader *header =
-            open_archive(cds_status.archive, &cds_status.archive_fd, &h, sizeof(h));
+    struct CDSArchiveHeader *header = open_archive(
+        cds_status.archive, &cds_status.archive_fd, &h, sizeof(h));
     if (header == NULL) {
         if (cds_status.archive_fd == NULL) {
             PyErr_SetString(CDSException, "open mmap file failed.");
-        } else {
+        }
+        else {
             PyErr_SetString(CDSException, "read archive header failed.");
         }
         goto fail;
@@ -344,26 +353,27 @@ PyCDS_LoadArchive(const char *archive) {
 
     size_t aligned_size = ALIEN_TO(h.used, 4096);
     void *shm =
-            map_archive(cds_status.archive_fd, aligned_size, h.mapped_addr);
+        map_archive(cds_status.archive_fd, aligned_size, h.mapped_addr);
     if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
-    } else if (shm != h.mapped_addr) {
+    }
+    else if (shm != h.mapped_addr) {
         PyErr_SetString(CDSException, "mmap relocated.");
     }
 
-    cds_status.archive_header = (struct CDSArchiveHeader *) shm;
+    cds_status.archive_header = (struct CDSArchiveHeader *)shm;
     close(cds_status.archive_fd);
     cds_status.archive_fd = 0;
 
 #if M_POPULATE == 0
     for (size_t i = 0; i < cds_status.archive_header->used; i += 4096) {
-        ((char volatile *) shm)[i] += 0;
+        ((char volatile *)shm)[i] += 0;
     }
 #endif
 
     if (cds_status.archive_header->none_addr) {
         cds_status.shift =
-                (ptype) Py_None - (ptype) cds_status.archive_header->none_addr;
+            (ptype)Py_None - (ptype)cds_status.archive_header->none_addr;
     }
     if (cds_status.archive_header->obj != NULL) {
         assert(!cds_status.traverse_error);
@@ -375,7 +385,7 @@ PyCDS_LoadArchive(const char *archive) {
 
 #ifdef INTERN_HEAP_STRING
         struct StringRefList *str_refs =
-                cds_status.archive_header->all_string_ref;
+            cds_status.archive_header->all_string_ref;
         while (str_refs != NULL) {
             if (PyCDS_STR_INTERNED(str_refs->str)) {
                 PyObject *heap_str = str_refs->str;
@@ -390,7 +400,7 @@ PyCDS_LoadArchive(const char *archive) {
                     size_t ref_count = -1;
 
                     PyCDS_Verbose(
-                            2, "string already interned, updating in-heap refs.");
+                        2, "string already interned, updating in-heap refs.");
                     // reassign references
                     struct StringRefItem *ref = str_refs->refs;
                     while (ref != NULL) {
@@ -416,30 +426,32 @@ PyCDS_LoadArchive(const char *archive) {
 
     return shm;
 
-    fail:
+fail:
     close(cds_status.archive_fd);
     cds_status.archive_fd = 0;
     return NULL;
 }
 
 void
-PyCDS_InitMoveIn() {
+PyCDS_InitMoveIn()
+{
     assert(cds_status.move_in_ctx == NULL);
     cds_status.move_in_ctx = malloc(sizeof(struct MoveInContext));
     cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject =
-            PyCDS_Table_New();
+        PyCDS_Table_New();
     cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list =
-            PyCDS_Table_New();
+        PyCDS_Table_New();
 }
 
 void
-PyCDS_FinalizeMoveIn() {
+PyCDS_FinalizeMoveIn()
+{
     assert(cds_status.move_in_ctx != NULL);
 
     PyCDS_Table_Destroy(
-            cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject);
+        cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject);
     PyCDS_Table_Destroy(
-            cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list);
+        cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list);
     free(cds_status.move_in_ctx);
 }
 
@@ -447,7 +459,8 @@ PyCDS_FinalizeMoveIn() {
  * Set Python exception and return NULL if error occured.
  */
 void
-PyCDS_MoveInRec(PyObject *op, PyObject **target) {
+PyCDS_MoveInRec(PyObject *op, PyObject **target)
+{
     *target = NULL;
     if (op == NULL) {
         return;
@@ -476,30 +489,34 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
 
     if (ty == &PyBool_Type || ty == &_PyNone_Type || ty == &PyEllipsis_Type) {
         *target = op;
-    } else if (ty == &PyBytes_Type) {
+    }
+    else if (ty == &PyBytes_Type) {
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
-        PyBytesObject *res = (PyBytesObject *) PyCDS_Malloc(
-                offsetof(PyBytesObject, ob_sval) + 1 + size);
+        PyBytesObject *res = (PyBytesObject *)PyCDS_Malloc(
+            offsetof(PyBytesObject, ob_sval) + 1 + size);
 
-        (void) PyObject_INIT_VAR(res, &PyBytes_Type, size);
+        (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
         res->ob_shash = -1;
-        memcpy(res->ob_sval, ((PyBytesObject *) op)->ob_sval, size + 1);
+        memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
 
-        *target = (PyObject *) res;
+        *target = (PyObject *)res;
         UNTRACK(*target);
-    } else if (ty == &PyComplex_Type) {
+    }
+    else if (ty == &PyComplex_Type) {
         SIMPLE_MOVE_IN(PyComplexObject, &PyComplex_Type,
-                       { res->cval = ((PyComplexObject *) op)->cval; })
-    } else if (ty == &PyFloat_Type) {
+                       { res->cval = ((PyComplexObject *)op)->cval; })
+    }
+    else if (ty == &PyFloat_Type) {
         SIMPLE_MOVE_IN(PyFloatObject, &PyFloat_Type,
-                       { res->ob_fval = ((PyFloatObject *) op)->ob_fval; })
-    } else if (ty == &PyLong_Type) {
+                       { res->ob_fval = ((PyFloatObject *)op)->ob_fval; })
+    }
+    else if (ty == &PyLong_Type) {
         // todo: also support small ints
         // but small int doesn't have public API.
 
         // _PyLong_Copy starts
-        PyLongObject *src = (PyLongObject *) op;
+        PyLongObject *src = (PyLongObject *)op;
         Py_ssize_t size = Py_SIZE(src);
         if (size < 0)
             size = -(size);
@@ -507,7 +524,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
         // _PyLong_New starts
         PyLongObject *res = PyCDS_Malloc(offsetof(PyLongObject, ob_digit) +
                                          size * sizeof(digit));
-        PyObject_INIT_VAR((PyVarObject *) res, &PyLong_Type, Py_SIZE(src));
+        PyObject_INIT_VAR((PyVarObject *)res, &PyLong_Type, Py_SIZE(src));
         // _PyLong_New ends
 
         while (--size >= 0) {
@@ -515,17 +532,19 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
         }
         // _PyLong_Copy ends
 
-        *target = (PyObject *) res;
+        *target = (PyObject *)res;
         UNTRACK(*target);
-    } else if (ty == &PyUnicode_Type) {
+    }
+    else if (ty == &PyUnicode_Type) {
         PyObject *res;
 
         if ((res = PyCDS_Table_Get(
-                cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
-                op)) != NULL) {
+                 cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
+                 op)) != NULL) {
             *target = res;
             Py_INCREF(*target);
-        } else {
+        }
+        else {
             // basically copied from unicodeobject.c, todo: optimize
 
             // _PyUnicode_Copy starts
@@ -548,15 +567,18 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
                 char_size = 1;
                 is_ascii = 1;
                 struct_size = sizeof(PyASCIIObject);
-            } else if (maxchar < 256) {
+            }
+            else if (maxchar < 256) {
                 kind = PyUnicode_1BYTE_KIND;
                 char_size = 1;
-            } else if (maxchar < 65536) {
+            }
+            else if (maxchar < 65536) {
                 kind = PyUnicode_2BYTE_KIND;
                 char_size = 2;
                 if (sizeof(wchar_t) == 2)
                     is_sharing = 1;
-            } else {
+            }
+            else {
                 kind = PyUnicode_4BYTE_KIND;
                 char_size = 4;
                 if (sizeof(wchar_t) == 4)
@@ -564,52 +586,55 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
             }
 
             res =
-                    (PyObject *) PyCDS_Malloc(struct_size + (size + 1) * char_size);
+                (PyObject *)PyCDS_Malloc(struct_size + (size + 1) * char_size);
             PyObject_Init(res, &PyUnicode_Type);
 
-            unicode = (PyCompactUnicodeObject *) res;
+            unicode = (PyCompactUnicodeObject *)res;
             if (is_ascii)
-                data = ((PyASCIIObject *) res) + 1;
+                data = ((PyASCIIObject *)res) + 1;
             else
                 data = unicode + 1;
-            (((PyASCIIObject *) (unicode))->length) = size;
-            (((PyASCIIObject *) (unicode))->hash) = -1;
+            (((PyASCIIObject *)(unicode))->length) = size;
+            (((PyASCIIObject *)(unicode))->hash) = -1;
             // used to determine strings to be interned when loading archive
             PyCDS_STR_INTERNED(unicode) = PyCDS_STR_INTERNED(op);
-            (((PyASCIIObject *) (unicode))->state).kind = kind;
-            (((PyASCIIObject *) (unicode))->state).compact = 1;
+            (((PyASCIIObject *)(unicode))->state).kind = kind;
+            (((PyASCIIObject *)(unicode))->state).compact = 1;
 #if PY_MINOR_VERSION < 12
-            (((PyASCIIObject *) (unicode))->state).ready = 1;
+            (((PyASCIIObject *)(unicode))->state).ready = 1;
 #endif
-            (((PyASCIIObject *) (unicode))->state).ascii = is_ascii;
+            (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;
             if (is_ascii) {
-                ((char *) data)[size] = 0;
+                ((char *)data)[size] = 0;
 #if PY_MINOR_VERSION < 12
-                (((PyASCIIObject *) (unicode))->wstr) = NULL;
+                (((PyASCIIObject *)(unicode))->wstr) = NULL;
 #endif
-            } else if (kind == PyUnicode_1BYTE_KIND) {
-                ((char *) data)[size] = 0;
+            }
+            else if (kind == PyUnicode_1BYTE_KIND) {
+                ((char *)data)[size] = 0;
 #if PY_MINOR_VERSION < 12
-                (((PyASCIIObject *) (unicode))->wstr) = NULL;
-                (((PyCompactUnicodeObject *) (unicode))->wstr_length) = 0;
+                (((PyASCIIObject *)(unicode))->wstr) = NULL;
+                (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
 #endif
                 unicode->utf8 = NULL;
                 unicode->utf8_length = 0;
-            } else {
+            }
+            else {
                 unicode->utf8 = NULL;
                 unicode->utf8_length = 0;
                 if (kind == PyUnicode_2BYTE_KIND)
-                    ((Py_UCS2 *) data)[size] = 0;
+                    ((Py_UCS2 *)data)[size] = 0;
                 else /* kind == PyUnicode_4BYTE_KIND */
-                    ((Py_UCS4 *) data)[size] = 0;
+                    ((Py_UCS4 *)data)[size] = 0;
 #if PY_MINOR_VERSION < 12
                 if (is_sharing) {
-                    (((PyCompactUnicodeObject *) (unicode))->wstr_length) =
-                            size;
-                    (((PyASCIIObject *) (unicode))->wstr) = (wchar_t *) data;
-                } else {
-                    (((PyCompactUnicodeObject *) (unicode))->wstr_length) = 0;
-                    (((PyASCIIObject *) (unicode))->wstr) = NULL;
+                    (((PyCompactUnicodeObject *)(unicode))->wstr_length) =
+                        size;
+                    (((PyASCIIObject *)(unicode))->wstr) = (wchar_t *)data;
+                }
+                else {
+                    (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
+                    (((PyASCIIObject *)(unicode))->wstr) = NULL;
                 }
 #endif
             }
@@ -623,12 +648,12 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
             UNTRACK(*target);
 
             PyCDS_Table_Insert(
-                    cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
-                    op, *target);
+                cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
+                op, *target);
         }
 
         struct StringRefList *str_refs = PyCDS_Table_Get(
-                cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list, res);
+            cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list, res);
 
         if (str_refs == NULL) {
             PyCDS_Verbose(2, "create identity in table: %p", res);
@@ -643,40 +668,42 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
                 Py_INCREF(res);
             }
             PyCDS_Table_Insert(
-                    cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list,
-                    res, str_refs);
+                cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list,
+                res, str_refs);
         }
         struct StringRefItem *n = PyCDS_Malloc(sizeof(struct StringRefItem));
         n->ref = target;
         n->next = str_refs->refs;
         str_refs->refs = n;
-    } else if (ty == &PyTuple_Type || ty == &PyFrozenSet_Type) {
+    }
+    else if (ty == &PyTuple_Type || ty == &PyFrozenSet_Type) {
         // PyTuple_New starts
         PyTupleObject *res;
         PyTupleObject *src;
         if (ty != &PyTuple_Type)
-            src = (PyTupleObject *) PySequence_Tuple(op);
+            src = (PyTupleObject *)PySequence_Tuple(op);
         else
-            src = (PyTupleObject *) op;
-        Py_ssize_t nitems = PyTuple_Size((PyObject *) src);
+            src = (PyTupleObject *)op;
+        Py_ssize_t nitems = PyTuple_Size((PyObject *)src);
 
         // tuple_alloc & _PyObject_GC_NewVar starts
         size_t var_size = _PyObject_VAR_SIZE(&PyTuple_Type, nitems);
 
-        PyVarObject *var = (PyVarObject *) PyCDS_Malloc(var_size);
+        PyVarObject *var = (PyVarObject *)PyCDS_Malloc(var_size);
         PyObject_INIT_VAR(var, &PyTuple_Type, nitems);
         // tuple_alloc & _PyObject_GC_NewVar ends
 
-        res = (PyTupleObject *) var;
+        res = (PyTupleObject *)var;
 
         for (Py_ssize_t i = 0; i < nitems; i++) {
             PYCDS_MOVEIN_REC_RETURN(src->ob_item[i], &res->ob_item[i]);
             Py_INCREF(res->ob_item[i]);
         }
-        *target = (PyObject *) res;
+        *target = (PyObject *)res;
         UNTRACK(*target);
-    } else if (ty == &PyCode_Type) {
-        PyCodeObject *src = (PyCodeObject *) op;
+    }
+    else if (ty == &PyCode_Type) {
+        PyCodeObject *src = (PyCodeObject *)op;
 
 #if PY_MINOR_VERSION < 11
         Py_ssize_t *cell2arg = NULL;
@@ -698,7 +725,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
             offsetof(PyCodeObject, co_code_adaptive) + code_size);
         Py_SET_SIZE(res, code_count);
 #else
-        res = (PyCodeObject *) PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
+        res = (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
 #endif
         PyObject_INIT(res, &PyCode_Type);
 
@@ -742,9 +769,10 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
 #endif
 #endif
 
-        *target = (PyObject *) res;
+        *target = (PyObject *)res;
         UNTRACK(*target);
-    } else {
+    }
+    else {
         PyErr_SetObject(CDSException,
                         PyUnicode_FromFormat("Trying to move in a %s object.",
                                              ty->tp_name));
@@ -756,7 +784,8 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target) {
 }
 
 void
-PyCDS_PatchPyObject(PyObject **ref) {
+PyCDS_PatchPyObject(PyObject **ref)
+{
 #ifdef FAST_PATCH
     if (cds_status.shift == 0) {
         return;
@@ -765,39 +794,45 @@ PyCDS_PatchPyObject(PyObject **ref) {
     PyObject *op = *ref;
     if (op == NULL) {
         return;
-    } else if (op == cds_status.archive_header->none_addr ||
-               op == cds_status.archive_header->true_addr ||
-               op == cds_status.archive_header->false_addr ||
-               op == cds_status.archive_header->ellipsis_addr) {
+    }
+    else if (op == cds_status.archive_header->none_addr ||
+             op == cds_status.archive_header->true_addr ||
+             op == cds_status.archive_header->false_addr ||
+             op == cds_status.archive_header->ellipsis_addr) {
         PyCDS_Verbose(2, "patching basic types.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
-    } else if (Py_TYPE(op) == &PyUnicode_Type) {
+    }
+    else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
-    } else {
+    }
+    else {
         PyTypeObject *ty =
-                UNSHIFT(Py_TYPE(op), cds_status.shift, PyTypeObject);
+            UNSHIFT(Py_TYPE(op), cds_status.shift, PyTypeObject);
 
         if (/* numbers */ ty == &PyComplex_Type || ty == &PyLong_Type ||
-                          ty == &PyFloat_Type ||
-                          /* strings */ ty == &PyBytes_Type || ty == &PyUnicode_Type) {
+            ty == &PyFloat_Type ||
+            /* strings */ ty == &PyBytes_Type || ty == &PyUnicode_Type) {
             // simple patch
             Py_SET_TYPE(*ref, ty);
-        } else if (ty == &PyTuple_Type) {
+        }
+        else if (ty == &PyTuple_Type) {
             Py_SET_TYPE(op, &PyTuple_Type);
-            PyTupleObject *tuple_op = (PyTupleObject *) op;
+            PyTupleObject *tuple_op = (PyTupleObject *)op;
             for (Py_ssize_t i = Py_SIZE(tuple_op); --i >= 0;) {
                 PYCDS_PATCHPYOBJECT_RETURN(&tuple_op->ob_item[i]);
             }
-        } else if (ty == &PyCode_Type) {
+        }
+        else if (ty == &PyCode_Type) {
             Py_SET_TYPE(op, &PyCode_Type);
-            PyCodeObject *code_op = (PyCodeObject *) op;
+            PyCodeObject *code_op = (PyCodeObject *)op;
 
 #define SIMPLE_HANDLER(field)
 #define PATCH_HANDLER(field) PYCDS_PATCHPYOBJECT_RETURN(&code_op->field)
             UNWIND_CODE_FIELDS
 #undef PATCH_HANDLER
 #undef SIMPLE_HANDLER
-        } else {
+        }
+        else {
             PyErr_SetString(CDSException, "cannot patch type.");
             cds_status.traverse_error = true;
         }
@@ -805,7 +840,8 @@ PyCDS_PatchPyObject(PyObject **ref) {
 }
 
 void
-PyCDS_Verbose(int verbosity, const char *fmt, ...) {
+PyCDS_Verbose(int verbosity, const char *fmt, ...)
+{
     if (cds_status.verbose >= verbosity) {
         va_list arg;
         va_start(arg, fmt);
@@ -818,24 +854,28 @@ PyCDS_Verbose(int verbosity, const char *fmt, ...) {
 }
 
 PyObject *
-PyCDS_SetInitializedWithMode(int new_flag) {
+PyCDS_SetInitializedWithMode(int new_flag)
+{
     if (!(new_flag == CDS_MODE_DISABLED || new_flag == CDS_MODE_DUMP_ARCHIVE ||
           new_flag == CDS_MODE_DUMP_LIST || new_flag == CDS_MODE_SHARE ||
           new_flag == CDS_MODE_MANUALLY)) {
         set_cds_exception_from_format("invalid mode: %d.", new_flag);
         return NULL;
-    } else if (cds_status.initialized) {
+    }
+    else if (cds_status.initialized) {
         if (cds_status.mode == CDS_MODE_MANUALLY ||
             (cds_status.mode == CDS_MODE_DISABLED &&
              new_flag == CDS_MODE_DUMP_ARCHIVE)) {
             // good, supposed to change mode after initialization
             PyCDS_Verbose(1, "change mode after initialization");
-        } else {
+        }
+        else {
             set_cds_exception_from_format(
-                    "cds already initialized, current mode: %d.", cds_status.mode);
+                "cds already initialized, current mode: %d.", cds_status.mode);
             return NULL;
         }
-    } else {
+    }
+    else {
         cds_status.initialized = true;
     }
 
@@ -846,7 +886,8 @@ PyCDS_SetInitializedWithMode(int new_flag) {
 }
 
 PyObject *
-PyCDS_SetVerbose(int new_flag) {
+PyCDS_SetVerbose(int new_flag)
+{
     if (!(new_flag >= 0 && new_flag <= 2)) {
         set_cds_exception_from_format("invalid verbose: %d.", new_flag);
         return NULL;

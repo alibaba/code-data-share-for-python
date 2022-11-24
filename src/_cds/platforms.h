@@ -45,7 +45,8 @@ create_map_from_archive(void *addr, size_t size, fd_type fd);
 struct CDSArchiveHeader;
 
 struct CDSArchiveHeader *
-open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header, size_t header_size);
+open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header,
+             size_t header_size);
 
 void *
 map_archive(fd_type file, size_t size, void *addr);
