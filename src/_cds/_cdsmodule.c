@@ -270,7 +270,7 @@ PyCDS_CreateArchive(const char *archive)
     void *shm = create_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
                                         cds_status.archive_fd);
     if (shm == NULL) {
-        PyErr_SetString(CDSException, "mmap failed.");
+        PyErr_SetString(CDSException, "mmap failed during dump.");
         return NULL;
     }
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;

@@ -33,6 +33,9 @@ typedef HANDLE fd_type;
 typedef long long ptype;
 #endif
 
+void
+verbose(const char *fmt, ...);
+
 fd_type
 create_archive_preallocate(const char *name, size_t size);
 
