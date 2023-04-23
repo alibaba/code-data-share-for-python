@@ -114,18 +114,18 @@ PyInit__cds(void)
 /*[clinic input]
 _cds._create_archive
 
-    archive: str
+    a: str
 
 [clinic start generated code]*/
 
 static PyObject *
-_cds__create_archive_impl(PyObject *module, const char *archive)
-/*[clinic end generated code: output=3cfd54cfec16be94 input=374154f19d6a118a]*/
+_cds__create_archive_impl(PyObject *module, const char *a)
+/*[clinic end generated code: output=f1988bd7671f7c9d input=08a4b00537dd6b27]*/
 {
     if (PyCDS_SetInitializedWithMode(CDS_MODE_DUMP_ARCHIVE) == NULL) {
         return NULL;
     }
-    if (PyCDS_CreateArchive(archive) == NULL) {
+    if (PyCDS_CreateArchive(a) == NULL) {
         return NULL;
     }
     return Py_NewRef(Py_None);
@@ -134,18 +134,18 @@ _cds__create_archive_impl(PyObject *module, const char *archive)
 /*[clinic input]
 _cds._load_archive
 
-    archive: str
+    a: str
 
 [clinic start generated code]*/
 
 static PyObject *
-_cds__load_archive_impl(PyObject *module, const char *archive)
-/*[clinic end generated code: output=5838740b6db38d96 input=94f6b2c07d205bf5]*/
+_cds__load_archive_impl(PyObject *module, const char *a)
+/*[clinic end generated code: output=ea84ac4ab0a881f4 input=8ba3998039bc0bb4]*/
 {
     if (PyCDS_SetInitializedWithMode(CDS_MODE_SHARE) == NULL) {
         return NULL;
     }
-    if (PyCDS_LoadArchive(archive) == NULL) {
+    if (PyCDS_LoadArchive(a) == NULL) {
         return NULL;
     }
     return Py_NewRef(Py_None);
@@ -154,13 +154,13 @@ _cds__load_archive_impl(PyObject *module, const char *archive)
 /*[clinic input]
 _cds._move_in
 
-    op: object
+    obj: object
 
 [clinic start generated code]*/
 
 static PyObject *
-_cds__move_in_impl(PyObject *module, PyObject *op)
-/*[clinic end generated code: output=a5166107eeb0f42e input=87375f3d38d58acb]*/
+_cds__move_in_impl(PyObject *module, PyObject *obj)
+/*[clinic end generated code: output=0012278346afd0ee input=524a7d92ba298a44]*/
 {
     if ((cds_status.mode & CDS_MODE_DUMP_ARCHIVE) != CDS_MODE_DUMP_ARCHIVE) {
         return NULL;
@@ -173,7 +173,7 @@ _cds__move_in_impl(PyObject *module, PyObject *op)
     }
     PyCDS_InitMoveIn();
 
-    PYCDS_MOVEIN_IMPL(op, &cds_status.archive_header->obj);
+    PYCDS_MOVEIN_IMPL(obj, &cds_status.archive_header->obj);
 
     PyCDS_FinalizeMoveIn();
 

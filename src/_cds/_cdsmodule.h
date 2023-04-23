@@ -110,18 +110,23 @@ struct CDSStatus {
 };
 
 void *PyCDS_Malloc(size_t);
+
 void
 PyCDS_Free(void *);
+
 bool
 PyCDS_InHeap(void *);
 
 // for PyMemAllocatorEx
 void *
 PyCDS_AllocatorMalloc(void *, size_t);
+
 void *
 PyCDS_AllocatorCalloc(void *, size_t, size_t);
+
 void *
 PyCDS_AllocatorRealloc(void *, void *, size_t);
+
 void
 PyCDS_AllocatorFree(void *, void *);
 
@@ -138,8 +143,10 @@ PyCDS_LoadArchive(const char *archive);
 
 void
 PyCDS_InitMoveIn();
+
 void
 PyCDS_MoveInRec(PyObject *op, PyObject **target);
+
 void
 PyCDS_FinalizeMoveIn();
 
@@ -157,6 +164,7 @@ PyCDS_FinalizeMoveIn();
 
 void
 PyCDS_PatchPyObject(PyObject **ref);
+
 #define PYCDS_PATCHPYOBJECT_RETURN(ref)  \
     do {                                 \
         PyCDS_PatchPyObject((ref));      \
