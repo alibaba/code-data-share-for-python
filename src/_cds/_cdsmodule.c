@@ -452,6 +452,7 @@ PyCDS_InitMoveIn()
     cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list =
         PyCDS_Table_New();
 }
+
 void
 PyCDS_FinalizeMoveIn()
 {

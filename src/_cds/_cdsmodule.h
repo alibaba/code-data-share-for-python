@@ -182,7 +182,7 @@ PyCDS_SetInitializedWithMode(int new_flag);
 PyObject *
 PyCDS_SetVerbose(int new_flag);
 
-#define PyCDS_STR_INTERNED(op) (((PyASCIIObject *)(op))->state.interned)
+#define PyCDS_STR_INTERNED(op) (_PyASCIIObject_CAST(op)->state.interned)
 
 // Formatter doesn't work well on #if inside #define,
 // so we use following function-like masks.
