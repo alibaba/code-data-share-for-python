@@ -480,6 +480,9 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
 
     PyCDS_Verbose(2, "move %s@%p into %p", Py_TYPE(op)->tp_name, op, target);
 
+#if PY_MINOR_VERSION >= 12
+#define UNTRACK(obj) (_Py_SetImmortal(obj))
+#else
 #define UNTRACK(obj)                \
     do {                            \
         /* Extra refcnt to          \
@@ -487,6 +490,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         Py_SET_REFCNT((obj), 1);    \
         PyObject_GC_UnTrack((obj)); \
     } while (0)
+#endif
 
 #define SIMPLE_MOVE_IN(obj_type, type, copy)            \
     obj_type *res = PyCDS_Malloc(_PyObject_SIZE(type)); \
@@ -531,35 +535,31 @@ _Py_COMP_DIAG_POP
                        { res->ob_fval = ((PyFloatObject *)op)->ob_fval; })
     }
     else if (ty == &PyLong_Type) {
-        // todo: also support small ints
-        // but small int doesn't have public API.
-
         // _PyLong_Copy starts
         PyLongObject *src = (PyLongObject *)op;
-        Py_ssize_t size = Py_SIZE(src);
-        if (size < 0)
-            size = -(size);
+
+        // small ints
+        if (_PyLong_IsCompact(src)) {
+            stwodigits ival = ((stwodigits)_PyLong_CompactValue(src));
+            if ((-_PY_NSMALLNEGINTS <= ival && ival < _PY_NSMALLPOSINTS)) {
+                *target = op;
+                return;
+            }
+        }
+
+        Py_ssize_t size = _PyLong_DigitCount(src);
 
         // _PyLong_New starts
-        PyLongObject *res;
-#if PY_MINOR_VERSION < 12
-        res = PyCDS_Malloc(offsetof(PyLongObject, ob_digit) +
-                           size * sizeof(digit));
-#else
-        res = PyCDS_Malloc(offsetof(PyLongObject, long_value) +
-                           offsetof(_PyLongValue, ob_digit) +
-                           size * sizeof(digit));
-#endif
-        PyObject_INIT_VAR((PyVarObject *)res, &PyLong_Type, Py_SIZE(src));
+        PyLongObject *res =
+            PyCDS_Malloc(offsetof(PyLongObject, long_value.ob_digit) +
+                         size * sizeof(digit));
+        _PyLong_SetSignAndDigitCount(res, _PyLong_IsNegative(src) ? -1 : 1,
+                                     size);
+        PyObject_INIT((PyObject *)res, &PyLong_Type);
         // _PyLong_New ends
 
-        while (--size >= 0) {
-#if PY_MINOR_VERSION < 12
-            res->ob_digit[size] = src->ob_digit[size];
-#else
-            res->long_value.ob_digit[size] = res->long_value.ob_digit[size];
-#endif
-        }
+        memcpy(res->long_value.ob_digit, src->long_value.ob_digit,
+               size * sizeof(digit));
         // _PyLong_Copy ends
 
         *target = (PyObject *)res;
@@ -585,12 +585,14 @@ _Py_COMP_DIAG_POP
             PyCompactUnicodeObject *unicode;
             void *data;
             enum PyUnicode_Kind kind;
-            int is_sharing, is_ascii;
+            int
+#if PY_MINOR_VERSION < 12
+                is_sharing = 0,
+#endif
+                is_ascii = 0;
             Py_ssize_t char_size;
             Py_ssize_t struct_size;
 
-            is_ascii = 0;
-            is_sharing = 0;
             struct_size = sizeof(PyCompactUnicodeObject);
             if (maxchar < 128) {
                 kind = PyUnicode_1BYTE_KIND;
@@ -605,14 +607,18 @@ _Py_COMP_DIAG_POP
             else if (maxchar < 65536) {
                 kind = PyUnicode_2BYTE_KIND;
                 char_size = 2;
+#if PY_MINOR_VERSION < 12
                 if (sizeof(wchar_t) == 2)
                     is_sharing = 1;
+#endif
             }
             else {
                 kind = PyUnicode_4BYTE_KIND;
                 char_size = 4;
+#if PY_MINOR_VERSION < 12
                 if (sizeof(wchar_t) == 4)
                     is_sharing = 1;
+#endif
             }
 
             res =
@@ -626,8 +632,13 @@ _Py_COMP_DIAG_POP
                 data = unicode + 1;
             (((PyASCIIObject *)(unicode))->length) = size;
             (((PyASCIIObject *)(unicode))->hash) = -1;
+#if PY_MINOR_VERSION >= 12
+            _Py_SetImmortal(&unicode);
+            PyCDS_STR_INTERNED(unicode) = SSTATE_INTERNED_IMMORTAL_STATIC;
+#else
             // used to determine strings to be interned when loading archive
             PyCDS_STR_INTERNED(unicode) = PyCDS_STR_INTERNED(op);
+#endif
             (((PyASCIIObject *)(unicode))->state).kind = kind;
             (((PyASCIIObject *)(unicode))->state).compact = 1;
 #if PY_MINOR_VERSION < 12
@@ -819,6 +830,7 @@ PyCDS_PatchPyObject(PyObject **ref)
 {
 #ifdef FAST_PATCH
     if (cds_status.shift == 0) {
+        PyCDS_Verbose(1, "skip patching.");
         return;
     }
 #endif
@@ -831,6 +843,12 @@ PyCDS_PatchPyObject(PyObject **ref)
              op == cds_status.archive_header->false_addr ||
              op == cds_status.archive_header->ellipsis_addr) {
         PyCDS_Verbose(2, "patching basic types.");
+        *ref = UNSHIFT(op, cds_status.shift, PyObject);
+    }
+    else if ((void *)op < CDS_REQUESTING_ADDR ||
+             (void *)op >
+                 CDS_REQUESTING_ADDR + cds_status.archive_header->used) {
+        PyCDS_Verbose(2, "patching other out-heap references.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
     }
     else if (Py_TYPE(op) == &PyUnicode_Type) {

@@ -3,6 +3,13 @@
 
 #include <Python.h>
 
+// immortal & compact long
+#if PY_MINOR_VERSION >= 12
+#include <internal/pycore_long.h>
+#include <internal/pycore_object.h>
+#include <internal/pycore_runtime.h>
+#endif
+
 // adaptive interpreter things
 #if PY_MINOR_VERSION >= 11
 #if PY_MINOR_VERSION == 11
