@@ -30,7 +30,7 @@ internable_chars = string.ascii_letters + string.digits + '_'
 
 
 class ShareObjectTestMixin(CdsTestMixin):
-    def run_serialize_test(self, value, oracle=None):
+    def run_serialize_test(self, value, oracle=None, is_a=None):
         s = repr(value)
         if oracle is None:
             oracle = s
@@ -50,14 +50,31 @@ class ShareObjectTestMixin(CdsTestMixin):
         )
         self.assertEqual(oracle, out.out.decode().strip())
 
+        if is_a is not None:
+            out = self.assert_python_source_ok(
+                'import _cds;'
+                f'_cds._load_archive("{self.TEST_ARCHIVE}");'
+                f'print(_cds._get_obj() is {s})',
+                PYCDSMODE='MANUALLY',
+            )
+
+            self.assertEqual(out.out.decode().strip(), str(is_a))
+
 
 class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
     @assert_archive_created
     def test_base(self):
-        self.run_serialize_test(None)
-        self.run_serialize_test(True)
-        self.run_serialize_test(False)
-        self.run_serialize_test(...)
+        self.run_serialize_test(None, is_a=True)
+        self.run_serialize_test(True, is_a=True)
+        self.run_serialize_test(False, is_a=True)
+        self.run_serialize_test(..., is_a=True)
+
+    @assert_archive_created
+    def test_bytes_char_singleton(self):
+        for c in string.printable:
+            self.run_serialize_test(c.encode(), is_a=True)
+
+        self.run_serialize_test(b'', is_a=True)
 
     @assert_archive_created
     def test_bytes(self):
@@ -66,9 +83,9 @@ class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
     @assert_archive_created
     def test_long(self):
         for i in (0, 1, 10, 100, 2 ** 100):
-            self.run_serialize_test(i)
+            self.run_serialize_test(i, is_a=(-5 <= i < 128))
             if i != 0:
-                self.run_serialize_test(-i)
+                self.run_serialize_test(-i, is_a=(-5 <= -i < 128))
 
     @assert_archive_created
     def test_float(self):

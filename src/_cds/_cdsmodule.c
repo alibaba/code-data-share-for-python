@@ -507,6 +507,12 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
     else if (ty == &PyBytes_Type) {
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
+
+        // chars
+        if (size <= 1) {
+            *target = op;
+            return;
+        }
         PyBytesObject *res = (PyBytesObject *)PyCDS_Malloc(
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
