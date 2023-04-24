@@ -532,13 +532,24 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             size = -(size);
 
         // _PyLong_New starts
-        PyLongObject *res = PyCDS_Malloc(offsetof(PyLongObject, ob_digit) +
-                                         size * sizeof(digit));
+        PyLongObject *res;
+#if PY_MINOR_VERSION < 12
+        res = PyCDS_Malloc(offsetof(PyLongObject, ob_digit) +
+                           size * sizeof(digit));
+#else
+        res = PyCDS_Malloc(offsetof(PyLongObject, long_value) +
+                           offsetof(_PyLongValue, ob_digit) +
+                           size * sizeof(digit));
+#endif
         PyObject_INIT_VAR((PyVarObject *)res, &PyLong_Type, Py_SIZE(src));
         // _PyLong_New ends
 
         while (--size >= 0) {
+#if PY_MINOR_VERSION < 12
             res->ob_digit[size] = src->ob_digit[size];
+#else
+            res->long_value.ob_digit[size] = res->long_value.ob_digit[size];
+#endif
         }
         // _PyLong_Copy ends
 
