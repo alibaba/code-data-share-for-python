@@ -5,8 +5,9 @@
 
 // adaptive interpreter things
 #if PY_MINOR_VERSION >= 11
-#if PY_MINOR_VERSION >= 12
-#undef NEED_OPCODE_TABLES
+#if PY_MINOR_VERSION == 11
+// ?
+#define NEED_OPCODE_TABLES
 #endif
 #include <internal/pycore_code.h>
 #include <internal/pycore_opcode.h>
@@ -26,7 +27,11 @@
 
 #include <stdbool.h>
 
+#if PY_MINOR_VERSION >= 12
 #include "clinic/_cdsmodule.c.h"
+#else
+#include "clinic/_cdsmodule-b411.c.h"
+#endif
 #include "lookup_table.h"
 #include "pythoncapi_compat.h"
 
