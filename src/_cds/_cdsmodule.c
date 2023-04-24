@@ -507,8 +507,17 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
+
+// clang-format off
+#if PY_MINOR_VERSION <= 12
+_Py_COMP_DIAG_PUSH
+_Py_COMP_DIAG_IGNORE_DEPR_DECLS
         res->ob_shash = -1;
+_Py_COMP_DIAG_POP
+#endif
+
         memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
+        // clang-format on
 
         *target = (PyObject *)res;
         UNTRACK(*target);
