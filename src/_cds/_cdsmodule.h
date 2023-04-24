@@ -5,6 +5,9 @@
 
 // adaptive interpreter things
 #if PY_MINOR_VERSION >= 11
+#if PY_MINOR_VERSION >= 12
+#undef NEED_OPCODE_TABLES
+#endif
 #include <internal/pycore_code.h>
 #include <internal/pycore_opcode.h>
 #include <opcode.h>
@@ -202,41 +205,64 @@ PyCDS_SetVerbose(int new_flag);
 #define IF_10_OR_EARLIER(xx) xx
 #endif
 
+#if PY_VERSION_HEX >= 0x030C0000
+#define IF_12_OR_LATER(xx) xx
+#define IF_11_OR_EARLIER(xx)
+#else
+#define IF_12_OR_LATER(_)
+#define IF_11_OR_EARLIER(xx) xx
+#endif
+
+#define IFF_11(xx) IF_11_OR_EARLIER(IF_11_OR_LATER(xx))
+
+#define NOOP_PLACEHOLDER(xx)
+
 // Follow the order in latest cpython.
-#define UNWIND_CODE_FIELDS                             \
-    PATCH_HANDLER(co_consts);                          \
-    PATCH_HANDLER(co_names);                           \
-    IF_10_OR_EARLIER(PATCH_HANDLER(co_code);)          \
-    IF_11_OR_LATER(PATCH_HANDLER(co_exceptiontable);)  \
-                                                       \
-    SIMPLE_HANDLER(co_flags);                          \
-                                                       \
-    SIMPLE_HANDLER(co_argcount);                       \
-    SIMPLE_HANDLER(co_posonlyargcount);                \
-    SIMPLE_HANDLER(co_kwonlyargcount);                 \
-    SIMPLE_HANDLER(co_stacksize);                      \
-    SIMPLE_HANDLER(co_firstlineno);                    \
-                                                       \
-    IF_11_OR_LATER(SIMPLE_HANDLER(co_nlocalsplus);)    \
-                                                       \
-    SIMPLE_HANDLER(co_nlocals);                        \
-    IF_11_OR_LATER(SIMPLE_HANDLER(co_nplaincellvars);) \
-    IF_11_OR_LATER(SIMPLE_HANDLER(co_ncellvars);)      \
-    IF_11_OR_LATER(SIMPLE_HANDLER(co_nfreevars);)      \
-                                                       \
-    IF_11_OR_LATER(PATCH_HANDLER(co_localsplusnames);) \
-    IF_11_OR_LATER(PATCH_HANDLER(co_localspluskinds);) \
-                                                       \
-    PATCH_HANDLER(co_filename);                        \
-    PATCH_HANDLER(co_name);                            \
-    IF_11_OR_LATER(PATCH_HANDLER(co_qualname);)        \
-    IF_10_OR_LATER(PATCH_HANDLER(co_linetable);)       \
-                                                       \
-    IF_10_OR_EARLIER(PATCH_HANDLER(co_varnames);)      \
-    IF_10_OR_EARLIER(PATCH_HANDLER(co_freevars);)      \
-    IF_10_OR_EARLIER(PATCH_HANDLER(co_cellvars);)      \
-                                                       \
-    /* co_lnotab in 3.9 -> co_linetable after 3.10 */  \
-    IF_9_OR_EARLIER(PATCH_HANDLER(co_lnotab);)
+#define UNWIND_CODE_FIELDS                                         \
+    PATCH_HANDLER(co_consts);                                      \
+    PATCH_HANDLER(co_names);                                       \
+    IF_11_OR_LATER(PATCH_HANDLER(co_exceptiontable);)              \
+                                                                   \
+    SIMPLE_HANDLER(co_flags);                                      \
+                                                                   \
+    SIMPLE_HANDLER(co_argcount);                                   \
+    SIMPLE_HANDLER(co_posonlyargcount);                            \
+    SIMPLE_HANDLER(co_kwonlyargcount);                             \
+    SIMPLE_HANDLER(co_stacksize);                                  \
+    SIMPLE_HANDLER(co_firstlineno);                                \
+                                                                   \
+    IF_11_OR_LATER(SIMPLE_HANDLER(co_nlocalsplus);)                \
+    IF_12_OR_LATER(SIMPLE_HANDLER(co_framesize);)                  \
+    SIMPLE_HANDLER(co_nlocals);                                    \
+    IF_11_OR_LATER(SIMPLE_HANDLER(co_ncellvars);)                  \
+    IF_11_OR_LATER(SIMPLE_HANDLER(co_nfreevars);)                  \
+    IF_12_OR_LATER(SIMPLE_HANDLER(co_version);)                    \
+                                                                   \
+    IF_11_OR_LATER(PATCH_HANDLER(co_localsplusnames);)             \
+    IF_11_OR_LATER(PATCH_HANDLER(co_localspluskinds);)             \
+                                                                   \
+    PATCH_HANDLER(co_filename);                                    \
+    PATCH_HANDLER(co_name);                                        \
+    IF_11_OR_LATER(PATCH_HANDLER(co_qualname);)                    \
+    IF_10_OR_LATER(PATCH_HANDLER(co_linetable);)                   \
+    NOOP_PLACEHOLDER(co_weakreflist);                              \
+    IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_cached);)                  \
+    IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_instrumentation_version);) \
+    IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_monitoring);)              \
+    IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_firsttraceable);)          \
+    NOOP_PLACEHOLDER(co_extra);                                    \
+    IF_11_OR_LATER(NOOP_PLACEHOLDER(co_code_adaptive);)            \
+                                                                   \
+    /* Obsolete fields */                                          \
+                                                                   \
+    /* co_lnotab in 3.9 -> co_linetable after 3.10 */              \
+    IF_9_OR_EARLIER(PATCH_HANDLER(co_lnotab);)                     \
+                                                                   \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_varnames);)                  \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_freevars);)                  \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_cellvars);)                  \
+                                                                   \
+    IF_10_OR_EARLIER(PATCH_HANDLER(co_code);)                      \
+    IFF_11(SIMPLE_HANDLER(co_nplaincellvars);)
 
 #endif  // PYCDS__CDSMODULE_H

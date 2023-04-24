@@ -761,8 +761,9 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
 
         res->co_weakreflist = NULL;
         res->co_extra = NULL;
-
-#if PY_MINOR_VERSION >= 11
+#if PY_MINOR_VERSION >= 12
+        // todo
+#elif PY_MINOR_VERSION == 11
         res->co_warmup = QUICKENING_INITIAL_WARMUP_VALUE;
 
         _Py_CODEUNIT *instructions = _PyCode_CODE(res);
