@@ -21,15 +21,6 @@ DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
 CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
 
 
-def _site_hook_env(without_site_hook=False):
-    d = os.environ.copy()
-    if without_site_hook:
-        d[DISABLE_SITE_HOOK_KEY] = 'TRUE'
-    elif DISABLE_SITE_HOOK_KEY in d:
-        del d[DISABLE_SITE_HOOK_KEY]
-    return d
-
-
 def _py_version(session: nox.Session):
     """
     :return: "3.9", "3.10", ...
@@ -250,17 +241,7 @@ def build_wheel(session: nox.Session):
     """
 
     session.install("build")
-    session.run("python", "-m", "build", "--wheel", env=_site_hook_env(True))
-
-
-@nox.session(python=SUPPORTED_PYTHONS)
-def build_wheel_no_site_hook(session: nox.Session):
-    """
-    Make a wheel.
-    """
-
-    session.install("build")
-    session.run("python", "-m", "build", "--wheel", env=_site_hook_env(False))
+    session.run("python", "-m", "build", "--wheel")
 
 
 @nox.session(venv_backend='venv')
