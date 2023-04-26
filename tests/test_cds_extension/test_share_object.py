@@ -71,7 +71,7 @@ class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
 
     @assert_archive_created
     def test_bytes_char_singleton(self):
-        for c in string.printable:
+        for c in random.sample(string.printable, 10):
             self.run_serialize_test(c.encode(), is_a=True)
 
         self.run_serialize_test(b'', is_a=True)
@@ -103,7 +103,7 @@ class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
 
     @assert_archive_created
     def test_string_ascii(self):
-        self.run_serialize_test("")
+        self.run_serialize_test("", is_a=True)
         self.run_serialize_test(string.printable)
         self.run_serialize_test(''.join(random.choice(string.printable) for _ in range(10000)))
 

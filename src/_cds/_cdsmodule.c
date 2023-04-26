@@ -393,11 +393,15 @@ PyCDS_LoadArchive(const char *archive)
             return NULL;
         }
 
-#ifdef INTERN_HEAP_STRING
+        // if some (dynamically allocated) string has been interned before
+        // loading cds archive, we need to update references in archive to
+        // point to interned strings, to ensure string comparison is on
+        // short-path.
         struct StringRefList *str_refs =
             cds_status.archive_header->all_string_ref;
         while (str_refs != NULL) {
-            if (PyCDS_STR_INTERNED(str_refs->str)) {
+            if (PyCDS_STR_INTERNED(str_refs->str) ==
+                SSTATE_INTERNED_IMMORTAL) {
                 PyObject *heap_str = str_refs->str;
                 PyObject *borrowed_str = str_refs->str;
                 PyCDS_Verbose(2, "check string interns at %p.", str_refs->str);
@@ -405,33 +409,20 @@ PyCDS_LoadArchive(const char *archive)
                 PyCDS_STR_INTERNED(str_refs->str) = SSTATE_NOT_INTERNED;
                 PyUnicode_InternInPlace(&borrowed_str);
                 if (borrowed_str != heap_str) {
-                    // an extra decref is done in previous
-                    // PyUnicode_InternInPlace, so we start from -1 here.
-                    size_t ref_count = -1;
-
                     PyCDS_Verbose(
-                        2, "string already interned, updating in-heap refs.");
+                        1, "string already interned, updating in-heap refs.");
                     // reassign references
                     struct StringRefItem *ref = str_refs->refs;
                     while (ref != NULL) {
-                        ref_count++;
                         *(ref->ref) = borrowed_str;
                         ref = ref->next;
                     }
-
-                    Py_SET_REFCNT(heap_str, Py_REFCNT(heap_str) - ref_count);
-                    Py_SET_REFCNT(borrowed_str,
-                                  Py_REFCNT(borrowed_str) + ref_count);
-
-                    // rc >= 1 for in-heap references (e.g. from tuple) to str.
-                    assert(Py_REFCNT(heap_str) >= 1);
                 }
                 PyCDS_Verbose(2, "string singleton @ %p.", borrowed_str);
             }
 
             str_refs = str_refs->next;
         }
-#endif
     }
 
     return shm;
@@ -447,9 +438,9 @@ PyCDS_InitMoveIn()
 {
     assert(cds_status.move_in_ctx == NULL);
     cds_status.move_in_ctx = malloc(sizeof(struct MoveInContext));
-    cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject =
+    cds_status.move_in_ctx->orig_pyobject_to_in_heap_pyobject_map =
         PyCDS_Table_New();
-    cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list =
+    cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map =
         PyCDS_Table_New();
 }
 
@@ -459,9 +450,9 @@ PyCDS_FinalizeMoveIn()
     assert(cds_status.move_in_ctx != NULL);
 
     PyCDS_Table_Destroy(
-        cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject);
+        cds_status.move_in_ctx->orig_pyobject_to_in_heap_pyobject_map);
     PyCDS_Table_Destroy(
-        cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list);
+        cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map);
     free(cds_status.move_in_ctx);
 }
 
@@ -479,6 +470,10 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
     PyTypeObject *ty = Py_TYPE(op);
 
     PyCDS_Verbose(2, "move %s@%p into %p", Py_TYPE(op)->tp_name, op, target);
+
+#define UNEXPECTED_SINGLETON \
+    do {                     \
+    } while (0)
 
 #if PY_MINOR_VERSION >= 12
 #define UNTRACK(obj) (_Py_SetImmortal(obj))
@@ -504,14 +499,16 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
     if (ty == &PyBool_Type || ty == &_PyNone_Type || ty == &PyEllipsis_Type) {
         *target = op;
     }
+    else if (_PyCDS_InPySingleton(op)) {
+        *target = op;
+    }
     else if (ty == &PyBytes_Type) {
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
 
         // chars
         if (size <= 1) {
-            *target = op;
-            return;
+            UNEXPECTED_SINGLETON;
         }
         PyBytesObject *res = (PyBytesObject *)PyCDS_Malloc(
             offsetof(PyBytesObject, ob_sval) + 1 + size);
@@ -548,8 +545,7 @@ _Py_COMP_DIAG_POP
         if (_PyLong_IsCompact(src)) {
             stwodigits ival = ((stwodigits)_PyLong_CompactValue(src));
             if ((-_PY_NSMALLNEGINTS <= ival && ival < _PY_NSMALLPOSINTS)) {
-                *target = op;
-                return;
+                UNEXPECTED_SINGLETON;
             }
         }
 
@@ -572,151 +568,40 @@ _Py_COMP_DIAG_POP
         UNTRACK(*target);
     }
     else if (ty == &PyUnicode_Type) {
-        PyObject *res;
-
-        if ((res = PyCDS_Table_Get(
-                 cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
-                 op)) != NULL) {
-            *target = res;
-            Py_INCREF(*target);
+        if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
+            UNEXPECTED_SINGLETON;
         }
-        else {
-            // basically copied from unicodeobject.c, todo: optimize
 
-            // _PyUnicode_Copy starts
-            Py_ssize_t size = PyUnicode_GET_LENGTH(op);
-            Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(op);
+        if ((*target = PyCDS_Table_Get(
+                 cds_status.move_in_ctx->orig_pyobject_to_in_heap_pyobject_map,
+                 op)) != NULL) {
+            assert(PyCDS_STR_INTERNED(*target) == SSTATE_INTERNED_IMMORTAL);
+        }
+        else { /* String is not in archive yet. */
+            PyUnicode_InternInPlace(&op);
 
-            // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) starts
-            PyCompactUnicodeObject *unicode;
-            void *data;
-            enum PyUnicode_Kind kind;
-            int
-#if PY_MINOR_VERSION < 12
-                is_sharing = 0,
-#endif
-                is_ascii = 0;
-            Py_ssize_t char_size;
-            Py_ssize_t struct_size;
-
-            struct_size = sizeof(PyCompactUnicodeObject);
-            if (maxchar < 128) {
-                kind = PyUnicode_1BYTE_KIND;
-                char_size = 1;
-                is_ascii = 1;
-                struct_size = sizeof(PyASCIIObject);
-            }
-            else if (maxchar < 256) {
-                kind = PyUnicode_1BYTE_KIND;
-                char_size = 1;
-            }
-            else if (maxchar < 65536) {
-                kind = PyUnicode_2BYTE_KIND;
-                char_size = 2;
-#if PY_MINOR_VERSION < 12
-                if (sizeof(wchar_t) == 2)
-                    is_sharing = 1;
-#endif
-            }
-            else {
-                kind = PyUnicode_4BYTE_KIND;
-                char_size = 4;
-#if PY_MINOR_VERSION < 12
-                if (sizeof(wchar_t) == 4)
-                    is_sharing = 1;
-#endif
-            }
-
-            res =
-                (PyObject *)PyCDS_Malloc(struct_size + (size + 1) * char_size);
-            PyObject_Init(res, &PyUnicode_Type);
-
-            unicode = (PyCompactUnicodeObject *)res;
-            if (is_ascii)
-                data = ((PyASCIIObject *)res) + 1;
-            else
-                data = unicode + 1;
-            (((PyASCIIObject *)(unicode))->length) = size;
-            (((PyASCIIObject *)(unicode))->hash) = -1;
-#if PY_MINOR_VERSION >= 12
-            _Py_SetImmortal(&unicode);
-            PyCDS_STR_INTERNED(unicode) = SSTATE_INTERNED_IMMORTAL_STATIC;
-#else
-            // used to determine strings to be interned when loading archive
-            PyCDS_STR_INTERNED(unicode) = PyCDS_STR_INTERNED(op);
-#endif
-            (((PyASCIIObject *)(unicode))->state).kind = kind;
-            (((PyASCIIObject *)(unicode))->state).compact = 1;
-#if PY_MINOR_VERSION < 12
-            (((PyASCIIObject *)(unicode))->state).ready = 1;
-#endif
-            (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;
-            if (is_ascii) {
-                ((char *)data)[size] = 0;
-#if PY_MINOR_VERSION < 12
-                (((PyASCIIObject *)(unicode))->wstr) = NULL;
-#endif
-            }
-            else if (kind == PyUnicode_1BYTE_KIND) {
-                ((char *)data)[size] = 0;
-#if PY_MINOR_VERSION < 12
-                (((PyASCIIObject *)(unicode))->wstr) = NULL;
-                (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
-#endif
-                unicode->utf8 = NULL;
-                unicode->utf8_length = 0;
-            }
-            else {
-                unicode->utf8 = NULL;
-                unicode->utf8_length = 0;
-                if (kind == PyUnicode_2BYTE_KIND)
-                    ((Py_UCS2 *)data)[size] = 0;
-                else /* kind == PyUnicode_4BYTE_KIND */
-                    ((Py_UCS4 *)data)[size] = 0;
-#if PY_MINOR_VERSION < 12
-                if (is_sharing) {
-                    (((PyCompactUnicodeObject *)(unicode))->wstr_length) =
-                        size;
-                    (((PyASCIIObject *)(unicode))->wstr) = (wchar_t *)data;
-                }
-                else {
-                    (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
-                    (((PyASCIIObject *)(unicode))->wstr) = NULL;
-                }
-#endif
-            }
-            // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) ends
-
-            memcpy(PyUnicode_DATA(res), PyUnicode_DATA(op),
-                   size * PyUnicode_KIND(op));
-            // _PyUnicode_Copy ends
-
-            *target = res;
-            UNTRACK(*target);
+            *target = _PyCDS_PyUnicode_Copy(op);
 
             PyCDS_Table_Insert(
-                cds_status.move_in_ctx->map_orig_pyobject_to_in_heap_pyobject,
+                cds_status.move_in_ctx->orig_pyobject_to_in_heap_pyobject_map,
                 op, *target);
         }
 
         struct StringRefList *str_refs = PyCDS_Table_Get(
-            cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list, res);
+            cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map,
+            *target);
 
         if (str_refs == NULL) {
-            PyCDS_Verbose(2, "create identity in table: %p", res);
+            PyCDS_Verbose(2, "create identity in table: %p", *target);
             str_refs = PyCDS_Malloc(sizeof(struct StringRefList));
-            str_refs->str = res;
+            str_refs->str = *target;
             str_refs->refs = NULL;
             str_refs->next = cds_status.archive_header->all_string_ref;
             cds_status.archive_header->all_string_ref = str_refs;
 
-            if (PyCDS_STR_INTERNED(res)) {
-                // extra rc to prevent being freed when interning
-                Py_INCREF(res);
-            }
             PyCDS_Table_Insert(
-                cds_status.move_in_ctx->map_in_heap_str_to_string_ref_list,
-                res, str_refs);
+                cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map,
+                *target, str_refs);
         }
         struct StringRefItem *n = PyCDS_Malloc(sizeof(struct StringRefItem));
         n->ref = target;
@@ -732,6 +617,9 @@ _Py_COMP_DIAG_POP
         else
             src = (PyTupleObject *)op;
         Py_ssize_t nitems = PyTuple_Size((PyObject *)src);
+        if (nitems == 0) {
+            UNEXPECTED_SINGLETON;
+        }
 
         // tuple_alloc & _PyObject_GC_NewVar starts
         size_t var_size = _PyObject_VAR_SIZE(&PyTuple_Type, nitems);
@@ -752,28 +640,13 @@ _Py_COMP_DIAG_POP
     else if (ty == &PyCode_Type) {
         PyCodeObject *src = (PyCodeObject *)op;
 
-#if PY_MINOR_VERSION < 11
-        Py_ssize_t *cell2arg = NULL;
-        int n_cellvars = PyTuple_GET_SIZE(src->co_cellvars);
-        if (n_cellvars && src->co_cell2arg) {
-            cell2arg = PyCDS_Malloc(n_cellvars * sizeof(Py_ssize_t));
-            for (int i = 0; i < n_cellvars; i++) {
-                cell2arg[i] = src->co_cell2arg[i];
-            }
-        }
-#endif
-
         PyCodeObject *res;
-#if PY_MINOR_VERSION >= 11
         Py_ssize_t code_count, code_size;
         code_count = ((PyVarObject *)src)->ob_size;
         code_size = code_count * sizeof(_Py_CODEUNIT);
         res = (PyCodeObject *)PyCDS_Malloc(
             offsetof(PyCodeObject, co_code_adaptive) + code_size);
         Py_SET_SIZE(res, code_count);
-#else
-        res = (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
-#endif
         PyObject_INIT(res, &PyCode_Type);
 
 #define SIMPLE_HANDLER(field)    \
@@ -789,32 +662,6 @@ _Py_COMP_DIAG_POP
         res->co_extra = NULL;
 #if PY_MINOR_VERSION >= 12
         // todo
-#elif PY_MINOR_VERSION == 11
-        res->co_warmup = QUICKENING_INITIAL_WARMUP_VALUE;
-
-        _Py_CODEUNIT *instructions = _PyCode_CODE(res);
-        memcpy(instructions, src->co_code_adaptive, code_size);
-
-        // codeobject.c:deopt_code()
-        for (int i = 0; i < code_count; ++i) {
-            _Py_CODEUNIT instruction = instructions[i];
-            int opcode = _PyOpcode_Deopt[_Py_OPCODE(instruction)];
-            int caches = _PyOpcode_Caches[opcode];
-            instructions[i] = _Py_MAKECODEUNIT(opcode, _Py_OPARG(instruction));
-            while (caches--) {
-                instructions[++i] = _Py_MAKECODEUNIT(CACHE, 0);
-            }
-        }
-#else  // PY_MINOR_VERSION < 11
-        res->co_cell2arg = cell2arg;
-
-        res->co_opcache_map = NULL;
-        res->co_opcache = NULL;
-        res->co_opcache_flag = 0;
-        res->co_opcache_size = 0;
-#if PY_MINOR_VERSION < 10
-        res->co_zombieframe = NULL;
-#endif
 #endif
 
         *target = (PyObject *)res;
@@ -851,11 +698,10 @@ PyCDS_PatchPyObject(PyObject **ref)
         PyCDS_Verbose(2, "patching basic types.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
     }
-    else if ((void *)op < CDS_REQUESTING_ADDR ||
-             (void *)op >
-                 CDS_REQUESTING_ADDR + cds_status.archive_header->used) {
+    else if (!PyCDS_InHeap(op)) {
         PyCDS_Verbose(2, "patching other out-heap references.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
+        assert(_PyCDS_InPySingleton(*ref));
     }
     else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
@@ -951,4 +797,94 @@ PyCDS_SetVerbose(int new_flag)
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 1));
     PyStructSequence_SET_ITEM(cds_status.flags, 1, PyLong_FromLong(new_flag));
     return Py_NewRef(Py_None);
+}
+
+bool
+_PyCDS_InPySingleton(PyObject *op)
+{
+    return (void *)op >= (void *)&_PyRuntime.static_objects.singletons &&
+           (void *)op < (void *)(&_PyRuntime.static_objects.singletons + 1);
+}
+
+PyObject *
+_PyCDS_PyUnicode_Copy(PyObject *op)
+{
+    PyObject *res;
+
+    // basically copied from unicodeobject.c, todo: optimize
+
+    // _PyUnicode_Copy starts
+    Py_ssize_t size = PyUnicode_GET_LENGTH(op);
+    Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(op);
+
+    // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) starts
+    assert(size > 0);
+
+    PyCompactUnicodeObject *unicode;
+    void *data;
+    enum PyUnicode_Kind kind;
+    int is_ascii = 0;
+    Py_ssize_t char_size;
+    Py_ssize_t struct_size;
+
+    struct_size = sizeof(PyCompactUnicodeObject);
+    if (maxchar < 128) {
+        kind = PyUnicode_1BYTE_KIND;
+        char_size = 1;
+        is_ascii = 1;
+        struct_size = sizeof(PyASCIIObject);
+    }
+    else if (maxchar < 256) {
+        kind = PyUnicode_1BYTE_KIND;
+        char_size = 1;
+    }
+    else if (maxchar < 65536) {
+        kind = PyUnicode_2BYTE_KIND;
+        char_size = 2;
+    }
+    else {
+        kind = PyUnicode_4BYTE_KIND;
+        char_size = 4;
+    }
+
+    res = (PyObject *)PyCDS_Malloc(struct_size + (size + 1) * char_size);
+    PyObject_Init(res, &PyUnicode_Type);
+
+    unicode = (PyCompactUnicodeObject *)res;
+    if (is_ascii)
+        data = ((PyASCIIObject *)res) + 1;
+    else
+        data = unicode + 1;
+    (((PyASCIIObject *)(unicode))->length) = size;
+    (((PyASCIIObject *)(unicode))->hash) = -1;
+    // immortal bit will be set later by interning
+    PyCDS_STR_INTERNED(unicode) = SSTATE_NOT_INTERNED;
+    (((PyASCIIObject *)(unicode))->state).kind = kind;
+    (((PyASCIIObject *)(unicode))->state).compact = 1;
+    (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;
+    if (is_ascii) {
+        ((char *)data)[size] = 0;
+    }
+    else if (kind == PyUnicode_1BYTE_KIND) {
+        ((char *)data)[size] = 0;
+        unicode->utf8 = NULL;
+        unicode->utf8_length = 0;
+    }
+    else {
+        unicode->utf8 = NULL;
+        unicode->utf8_length = 0;
+        if (kind == PyUnicode_2BYTE_KIND)
+            ((Py_UCS2 *)data)[size] = 0;
+        else /* kind == PyUnicode_4BYTE_KIND */
+            ((Py_UCS4 *)data)[size] = 0;
+    }
+    // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) ends
+    assert(PyUnicode_KIND(res) == PyUnicode_KIND(op));
+
+    memcpy(PyUnicode_DATA(res), PyUnicode_DATA(op), size * PyUnicode_KIND(op));
+
+    assert(_PyUnicode_CheckConsistency(res, true));
+    // _PyUnicode_Copy ends
+
+    return res;
 }

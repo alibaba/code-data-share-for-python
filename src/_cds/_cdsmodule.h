@@ -46,7 +46,6 @@
 #define CDS_REQUESTING_ADDR ((void *)0x280000000L)
 
 #define FAST_PATCH
-#define INTERN_HEAP_STRING
 
 struct StringRefItem {
     PyObject **ref;
@@ -73,13 +72,10 @@ struct CDSArchiveHeader {
 };
 
 struct MoveInContext {
-    //    int serialized_count;
-    //    HeapSerializedObject *serialized_array;
-
     int n_alloc;
 
-    table *map_orig_pyobject_to_in_heap_pyobject;
-    table *map_in_heap_str_to_string_ref_list;
+    table *orig_pyobject_to_in_heap_pyobject_map;
+    table *in_heap_str_to_string_ref_list_map;
 };
 
 /*
@@ -196,6 +192,12 @@ PyCDS_SetInitializedWithMode(int new_flag);
 
 PyObject *
 PyCDS_SetVerbose(int new_flag);
+
+bool
+_PyCDS_InPySingleton(PyObject *);
+
+PyObject *
+_PyCDS_PyUnicode_Copy(PyObject *);
 
 #define PyCDS_STR_INTERNED(op) (_PyASCIIObject_CAST(op)->state.interned)
 
