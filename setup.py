@@ -10,10 +10,10 @@ for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
 
 setup(
     name='code-data-share',
-    version='0.0.2',
+    version='0.1.0',
     packages=['cds'],
     package_dir={'': 'src'},
-    python_requires='>=3.8.0',
+    python_requires='>=3.12.0',
     tests_require=['pytest'],
     long_description_content_type='text/x-rst; charset=UTF-8',
     long_description=readme,
@@ -22,10 +22,7 @@ setup(
         'Operating System :: MacOS :: MacOS X',
         # 'Operating System :: Microsoft :: Windows',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3.8',
-        'Programming Language :: Python :: 3.9',
-        'Programming Language :: Python :: 3.10',
-        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: Implementation :: CPython',
     ],
 )
