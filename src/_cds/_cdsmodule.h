@@ -76,6 +76,8 @@ struct MoveInContext {
 
     table *orig_pyobject_to_in_heap_pyobject_map;
     table *in_heap_str_to_string_ref_list_map;
+
+    PyObject *static_strings;
 };
 
 /*

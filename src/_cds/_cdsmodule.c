@@ -442,6 +442,20 @@ PyCDS_InitMoveIn()
         PyCDS_Table_New();
     cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map =
         PyCDS_Table_New();
+    cds_status.move_in_ctx->static_strings = PyDict_New();
+
+#define HANDLE_LITERAL(lit) \
+    PyDict_SetDefault(cds_status.move_in_ctx->static_strings, (lit), (lit));
+#define HANDLE_ASCII(c) \
+    PyDict_SetDefault(cds_status.move_in_ctx->static_strings, (c), (c));
+#define HANDLE_LATIN1(c) \
+    PyDict_SetDefault(cds_status.move_in_ctx->static_strings, (c), (c));
+
+#include "string_singletons.h"
+
+#undef HANDLE_LITERAL
+#undef HANDLE_ASCII
+#undef HANDLE_LATIN1
 }
 
 void
@@ -453,6 +467,9 @@ PyCDS_FinalizeMoveIn()
         cds_status.move_in_ctx->orig_pyobject_to_in_heap_pyobject_map);
     PyCDS_Table_Destroy(
         cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map);
+
+    Py_DecRef(cds_status.move_in_ctx->static_strings);
+
     free(cds_status.move_in_ctx);
 }
 
@@ -578,6 +595,16 @@ _Py_COMP_DIAG_POP
             assert(PyCDS_STR_INTERNED(*target) == SSTATE_INTERNED_IMMORTAL);
         }
         else { /* String is not in archive yet. */
+            if ((*target = PyDict_GetItem(
+                     cds_status.move_in_ctx->static_strings, op)) != NULL) {
+                // `_Py_ID` are static, and interned.
+                // But `_Py_STR`, `_Py_SINGLETON(strings).{ascii,latin1}` are
+                // not interned.
+                // So we manually construct the `static_strings` dict to make
+                // archive to refer to those static strings.
+                return;
+            }
+
             PyUnicode_InternInPlace(&op);
 
             *target = _PyCDS_PyUnicode_Copy(op);
@@ -857,8 +884,7 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
         data = unicode + 1;
     (((PyASCIIObject *)(unicode))->length) = size;
     (((PyASCIIObject *)(unicode))->hash) = -1;
-    // immortal bit will be set later by interning
-    PyCDS_STR_INTERNED(unicode) = SSTATE_NOT_INTERNED;
+    PyCDS_STR_INTERNED(unicode) = SSTATE_INTERNED_IMMORTAL;
     (((PyASCIIObject *)(unicode))->state).kind = kind;
     (((PyASCIIObject *)(unicode))->state).compact = 1;
     (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;

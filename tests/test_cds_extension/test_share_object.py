@@ -268,8 +268,8 @@ class InternStringTest(CdsTestMixin, unittest.TestCase):
             self.run_check(s + random.choice(string.punctuation.replace('_', '')), False, True, True)
 
     @assert_archive_created
-    def test_share_ascii(self):
-        for i in random.sample(range(0, 128 + 1), 10):
+    def test_share_static_ascii_latin1(self):
+        for i in random.sample(range(0, 128), 10):
             c = chr(i)
             l = chr(128 + i)
             self.run_check(c, True, False, False)
