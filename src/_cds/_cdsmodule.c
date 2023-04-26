@@ -886,5 +886,7 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
     assert(_PyUnicode_CheckConsistency(res, true));
     // _PyUnicode_Copy ends
 
+    _Py_SetImmortal(res);
+
     return res;
 }
