@@ -12,10 +12,6 @@
 
 // adaptive interpreter things
 #if PY_MINOR_VERSION >= 11
-#if PY_MINOR_VERSION == 11
-// ?
-#define NEED_OPCODE_TABLES
-#endif
 #include <internal/pycore_code.h>
 #include <internal/pycore_opcode.h>
 #include <opcode.h>
@@ -252,7 +248,7 @@ _PyCDS_PyUnicode_Copy(PyObject *);
     SIMPLE_HANDLER(co_nlocals);                                    \
     IF_11_OR_LATER(SIMPLE_HANDLER(co_ncellvars);)                  \
     IF_11_OR_LATER(SIMPLE_HANDLER(co_nfreevars);)                  \
-    IF_12_OR_LATER(SIMPLE_HANDLER(co_version);)                    \
+    IF_12_OR_LATER(NOOP_PLACEHOLDER(co_version);)                  \
                                                                    \
     IF_11_OR_LATER(PATCH_HANDLER(co_localsplusnames);)             \
     IF_11_OR_LATER(PATCH_HANDLER(co_localspluskinds);)             \
@@ -265,7 +261,7 @@ _PyCDS_PyUnicode_Copy(PyObject *);
     IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_cached);)                  \
     IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_instrumentation_version);) \
     IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_monitoring);)              \
-    IF_12_OR_LATER(NOOP_PLACEHOLDER(_co_firsttraceable);)          \
+    IF_12_OR_LATER(SIMPLE_HANDLER(_co_firsttraceable);)            \
     NOOP_PLACEHOLDER(co_extra);                                    \
     IF_11_OR_LATER(NOOP_PLACEHOLDER(co_code_adaptive);)            \
                                                                    \

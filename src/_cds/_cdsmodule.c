@@ -585,6 +585,9 @@ _Py_COMP_DIAG_POP
         UNTRACK(*target);
     }
     else if (ty == &PyUnicode_Type) {
+        // all strings are supposed to be interned, e.g. _PyStaticCode_Init
+        PyUnicode_InternInPlace(&op);
+
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
             UNEXPECTED_SINGLETON;
         }
@@ -604,8 +607,6 @@ _Py_COMP_DIAG_POP
                 // archive to refer to those static strings.
                 return;
             }
-
-            PyUnicode_InternInPlace(&op);
 
             *target = _PyCDS_PyUnicode_Copy(op);
 
@@ -659,7 +660,6 @@ _Py_COMP_DIAG_POP
 
         for (Py_ssize_t i = 0; i < nitems; i++) {
             PYCDS_MOVEIN_REC_RETURN(src->ob_item[i], &res->ob_item[i]);
-            Py_INCREF(res->ob_item[i]);
         }
         *target = (PyObject *)res;
         UNTRACK(*target);
@@ -685,11 +685,51 @@ _Py_COMP_DIAG_POP
 #undef PATCH_HANDLER
 #undef SIMPLE_HANDLER
 
+        static uint32_t _Py_next_func_version = 1;
+        res->co_version = _Py_next_func_version++;
+
+        res->_co_monitoring = NULL;
+
         res->co_weakreflist = NULL;
         res->co_extra = NULL;
-#if PY_MINOR_VERSION >= 12
-        // todo
-#endif
+        res->_co_cached = NULL;
+        res->_co_instrumentation_version = 0;
+
+        _Py_CODEUNIT *instructions = _PyCode_CODE(res);
+        memcpy(instructions, _PyCode_CODE(src), code_size);
+
+        // codeobject.c:deopt_code() & specialize.c:_PyCode_Quicken()
+        for (int i = 0, opcode = 0; i < code_count; ++i) {
+            int previous_opcode = opcode;
+            opcode = _PyOpcode_Deopt[instructions[i].op.code];
+            int caches = _PyOpcode_Caches[opcode];
+            instructions[i].op.code = opcode;
+            if (caches) {
+                for (int j = 1; j <= caches; j++) {
+                    instructions[i + j].cache = 0;
+                }
+                instructions[i + 1].cache = adaptive_counter_warmup();
+                i += caches;
+                continue;
+            }
+            switch (previous_opcode << 8 | opcode) {
+                case LOAD_CONST << 8 | LOAD_FAST:
+                    instructions[i - 1].op.code = LOAD_CONST__LOAD_FAST;
+                    break;
+                case LOAD_FAST << 8 | LOAD_CONST:
+                    instructions[i - 1].op.code = LOAD_FAST__LOAD_CONST;
+                    break;
+                case LOAD_FAST << 8 | LOAD_FAST:
+                    instructions[i - 1].op.code = LOAD_FAST__LOAD_FAST;
+                    break;
+                case STORE_FAST << 8 | LOAD_FAST:
+                    instructions[i - 1].op.code = STORE_FAST__LOAD_FAST;
+                    break;
+                case STORE_FAST << 8 | STORE_FAST:
+                    instructions[i - 1].op.code = STORE_FAST__STORE_FAST;
+                    break;
+            }
+        }
 
         *target = (PyObject *)res;
         UNTRACK(*target);
