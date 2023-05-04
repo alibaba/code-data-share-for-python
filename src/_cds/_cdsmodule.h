@@ -3,6 +3,8 @@
 
 #include <Python.h>
 
+#include "pycore_pymem.h"
+
 // immortal & compact long
 #if PY_MINOR_VERSION >= 12
 #include <internal/pycore_long.h>
@@ -190,6 +192,9 @@ PyCDS_SetInitializedWithMode(int new_flag);
 
 PyObject *
 PyCDS_SetVerbose(int new_flag);
+
+bool
+_PyCDS_MayBeDeepFreeze(PyObject *);
 
 bool
 _PyCDS_InPySingleton(PyObject *);

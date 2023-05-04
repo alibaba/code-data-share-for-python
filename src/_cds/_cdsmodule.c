@@ -486,14 +486,22 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
     assert(!cds_status.traverse_error);
     PyTypeObject *ty = Py_TYPE(op);
 
-    PyCDS_Verbose(2, "move %s@%p into %p", Py_TYPE(op)->tp_name, op, target);
+    static unsigned long level = 0;
+    level++;
+
+    PyCDS_Verbose(1, "%*s%s@%p -> %p", level - 1, "", Py_TYPE(op)->tp_name, op,
+                  target);
 
 #define UNEXPECTED_SINGLETON \
     do {                     \
     } while (0)
 
 #if PY_MINOR_VERSION >= 12
-#define UNTRACK(obj) (_Py_SetImmortal(obj))
+#define UNTRACK(obj)                \
+    do {                            \
+        _Py_SetImmortal(obj);       \
+        PyObject_GC_UnTrack((obj)); \
+    } while (0)
 #else
 #define UNTRACK(obj)                \
     do {                            \
@@ -743,6 +751,7 @@ _Py_COMP_DIAG_POP
     }
 
 #undef UNTRACK
+    level--;
 }
 
 void
@@ -813,7 +822,7 @@ PyCDS_Verbose(int verbosity, const char *fmt, ...)
     if (cds_status.verbose >= verbosity) {
         va_list arg;
         va_start(arg, fmt);
-        fprintf(stderr, "[cds] ");
+        fprintf(stderr, "[_cds] ");
         vfprintf(stderr, fmt, arg);
         fprintf(stderr, "\n");
         va_end(arg);
@@ -864,6 +873,12 @@ PyCDS_SetVerbose(int new_flag)
     Py_XDECREF(PyStructSequence_GET_ITEM(cds_status.flags, 1));
     PyStructSequence_SET_ITEM(cds_status.flags, 1, PyLong_FromLong(new_flag));
     return Py_NewRef(Py_None);
+}
+
+bool
+_PyCDS_MayBeDeepFreeze(PyObject *op)
+{
+    return (void *)op < (void *)&_PyRuntime;
 }
 
 bool
