@@ -173,7 +173,7 @@ _cds__move_in_impl(PyObject *module, PyObject *obj)
     }
     PyCDS_InitMoveIn();
 
-    PYCDS_MOVEIN_IMPL(obj, &cds_status.archive_header->obj);
+    PyCDS_MoveInRec(obj, &cds_status.archive_header->obj);
 
     PyCDS_FinalizeMoveIn();
 
@@ -492,8 +492,10 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
     PyCDS_Verbose(1, "%*s%s@%p -> %p", level - 1, "", Py_TYPE(op)->tp_name, op,
                   target);
 
-#define UNEXPECTED_SINGLETON \
-    do {                     \
+#define UNEXPECTED_SINGLETON(op)       \
+    do {                               \
+        PyObject_Print(op, stderr, 0); \
+        assert(false);                 \
     } while (0)
 
 #if PY_MINOR_VERSION >= 12
@@ -525,16 +527,24 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         *target = op;
     }
     else if (_PyCDS_InPySingleton(op)) {
+    singleton:
         *target = op;
     }
     else if (ty == &PyBytes_Type) {
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
 
-        // chars
-        if (size <= 1) {
-            UNEXPECTED_SINGLETON;
+        // could be singleton-ed, maybe from marshal?
+        if (size == 0) {
+            *target = (PyObject *)&_Py_SINGLETON(bytes_empty);
+            goto _return;
         }
+        else if (size == 1) {
+            *target = (PyObject *)&_Py_SINGLETON(
+                bytes_characters[PyBytes_AS_STRING(op)[0]]);
+            goto _return;
+        }
+
         PyBytesObject *res = (PyBytesObject *)PyCDS_Malloc(
             offsetof(PyBytesObject, ob_sval) + 1 + size);
 
@@ -570,7 +580,7 @@ _Py_COMP_DIAG_POP
         if (_PyLong_IsCompact(src)) {
             stwodigits ival = ((stwodigits)_PyLong_CompactValue(src));
             if ((-_PY_NSMALLNEGINTS <= ival && ival < _PY_NSMALLPOSINTS)) {
-                UNEXPECTED_SINGLETON;
+                UNEXPECTED_SINGLETON(op);
             }
         }
 
@@ -593,11 +603,16 @@ _Py_COMP_DIAG_POP
         UNTRACK(*target);
     }
     else if (ty == &PyUnicode_Type) {
+        if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
+            !_PyCDS_MayBeDeepFreeze(op)) {
+            UNEXPECTED_SINGLETON(op);
+        }
+
         // all strings are supposed to be interned, e.g. _PyStaticCode_Init
         PyUnicode_InternInPlace(&op);
 
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
-            UNEXPECTED_SINGLETON;
+            goto singleton;
         }
 
         if ((*target = PyCDS_Table_Get(
@@ -613,7 +628,7 @@ _Py_COMP_DIAG_POP
                 // not interned.
                 // So we manually construct the `static_strings` dict to make
                 // archive to refer to those static strings.
-                return;
+                goto _return;
             }
 
             *target = _PyCDS_PyUnicode_Copy(op);
@@ -654,7 +669,7 @@ _Py_COMP_DIAG_POP
             src = (PyTupleObject *)op;
         Py_ssize_t nitems = PyTuple_Size((PyObject *)src);
         if (nitems == 0) {
-            UNEXPECTED_SINGLETON;
+            UNEXPECTED_SINGLETON(op);
         }
 
         // tuple_alloc & _PyObject_GC_NewVar starts
@@ -747,10 +762,11 @@ _Py_COMP_DIAG_POP
                         PyUnicode_FromFormat("Trying to move in a %s object.",
                                              ty->tp_name));
         cds_status.traverse_error = true;
-        return;
+        goto _return;
     }
 
 #undef UNTRACK
+_return:
     level--;
 }
 

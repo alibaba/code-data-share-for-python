@@ -161,15 +161,11 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target);
 void
 PyCDS_FinalizeMoveIn();
 
-// we want to use different implementation of moving-in,
-// e.g. manually copy, patching python's allocator
-#define PYCDS_MOVEIN_IMPL PyCDS_MoveInRec
-
 #define PYCDS_MOVEIN_REC_RETURN(src, target) \
     do {                                     \
-        PYCDS_MOVEIN_IMPL((src), (target));  \
+        PyCDS_MoveInRec((src), (target));    \
         if (cds_status.traverse_error) {     \
-            return;                          \
+            goto _return;                    \
         }                                    \
     } while (0)
 
