@@ -537,12 +537,11 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
 
-        // could be singleton-ed, maybe from marshal?
         if (size == 0) {
-            *target = (PyObject *)&_Py_SINGLETON(bytes_empty);
-            goto _return;
+            UNEXPECTED_SINGLETON(op);
         }
         else if (size == 1) {
+            // maybe from marshal?
             *target = (PyObject *)&_Py_SINGLETON(
                 bytes_characters[PyBytes_AS_STRING(op)[0]]);
             goto _return;
