@@ -173,7 +173,7 @@ _cds__move_in_impl(PyObject *module, PyObject *obj)
     }
     PyCDS_InitMoveIn();
 
-    PyCDS_MoveInRec(obj, &cds_status.archive_header->obj);
+    PyCDS_MoveInRec(obj, &cds_status.archive_header->obj, &obj);
 
     PyCDS_FinalizeMoveIn();
 
@@ -477,7 +477,7 @@ PyCDS_FinalizeMoveIn()
  * Set Python exception and return NULL if error occured.
  */
 void
-PyCDS_MoveInRec(PyObject *op, PyObject **target)
+PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **srcref)
 {
     *target = NULL;
     if (op == NULL) {
@@ -603,13 +603,39 @@ _Py_COMP_DIAG_POP
         UNTRACK(*target);
     }
     else if (ty == &PyUnicode_Type) {
+        /*
+         * A string could be:
+         * 1. static, immortal, interned;
+         * 2. static, immortal, not interned;
+         * 3-6. not static, immortal/not, interned/not.
+         *
+         * Static strings come from deep freeze (deepfreeze.py) and
+         * pre-initialization (pycore_runtime_init_generated.h).
+         * Static runtime strings are interned, and deep-frozen strings are
+         * not.
+         * */
+
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
-            !_PyCDS_MayBeDeepFreeze(op)) {
+            _PyCDS_InPySingleton(op)) {
             UNEXPECTED_SINGLETON(op);
         }
+        else if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
+                 _PyCDS_MayBeDeepFreeze(op)) {
+            // deep freeze strings?
+        }
 
-        // all strings are supposed to be interned, e.g. _PyStaticCode_Init
-        PyUnicode_InternInPlace(&op);
+        if (!PyUnicode_CHECK_INTERNED(op)) {
+            // all strings occurred are supposed to be interned, e.g.
+            // _PyStaticCode_Init
+
+            // intern will modify rc of original
+            // reference, which might cause trouble.
+            //            PyObject *src = Py_NewRef(op);
+            PyUnicode_InternInPlace(srcref);
+            //            if (src == op) {
+            //                Py_DECREF(op);
+            //            }
+        }
 
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
             goto singleton;
