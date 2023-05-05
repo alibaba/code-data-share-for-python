@@ -156,7 +156,7 @@ void
 PyCDS_InitMoveIn();
 
 void
-PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **);
+PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref);
 
 void
 PyCDS_FinalizeMoveIn();
