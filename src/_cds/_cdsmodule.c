@@ -475,6 +475,8 @@ PyCDS_FinalizeMoveIn()
 
 /**
  * Set Python exception and return NULL if error occured.
+ *
+ * srcref is only used when need to modify original reference.
  */
 void
 PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **srcref)
@@ -626,12 +628,11 @@ _Py_COMP_DIAG_POP
 
         // all strings occurred are supposed to be interned, e.g.
         // _PyStaticCode_Init
-        if (!PyUnicode_CHECK_INTERNED(op)) {
-            // intern will modify original reference, we should use the
-            // original reference, not copied pointer.
-            PyUnicode_InternInPlace(srcref);
-            op = *srcref;
-        }
+        //
+        // intern will modify original reference, we should use the
+        // original reference, not copied pointer.
+        PyUnicode_InternInPlace(srcref);
+        op = *srcref;
 
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
             goto singleton;
