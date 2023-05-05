@@ -156,17 +156,17 @@ void
 PyCDS_InitMoveIn();
 
 void
-PyCDS_MoveInRec(PyObject *op, PyObject **target);
+PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref);
 
 void
 PyCDS_FinalizeMoveIn();
 
-#define PYCDS_MOVEIN_REC_RETURN(src, target) \
-    do {                                     \
-        PyCDS_MoveInRec((src), (target));    \
-        if (cds_status.traverse_error) {     \
-            goto _return;                    \
-        }                                    \
+#define PYCDS_MOVEIN_REC_RETURN(src, target)      \
+    do {                                          \
+        PyCDS_MoveInRec((src), (target), &(src)); \
+        if (cds_status.traverse_error) {          \
+            goto _return;                         \
+        }                                         \
     } while (0)
 
 void

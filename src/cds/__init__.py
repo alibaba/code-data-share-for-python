@@ -141,7 +141,7 @@ class CDSFinder:
 
 def init_from_env():
     if _cds._get_initialized():
-        _verbose('cds.init_from_env re-entered', 1)
+        _verbose('cds.init_from_env re-entered', 2)
         return
 
     verbosity = os.environ.get('PYCDSVERBOSE', None)

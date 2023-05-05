@@ -173,7 +173,7 @@ _cds__move_in_impl(PyObject *module, PyObject *obj)
     }
     PyCDS_InitMoveIn();
 
-    PyCDS_MoveInRec(obj, &cds_status.archive_header->obj);
+    PyCDS_MoveInRec(obj, &cds_status.archive_header->obj, &obj);
 
     PyCDS_FinalizeMoveIn();
 
@@ -410,7 +410,7 @@ PyCDS_LoadArchive(const char *archive)
                 PyUnicode_InternInPlace(&borrowed_str);
                 if (borrowed_str != heap_str) {
                     PyCDS_Verbose(
-                        1, "string already interned, updating in-heap refs.");
+                        2, "string already interned, updating in-heap refs.");
                     // reassign references
                     struct StringRefItem *ref = str_refs->refs;
                     while (ref != NULL) {
@@ -475,21 +475,24 @@ PyCDS_FinalizeMoveIn()
 
 /**
  * Set Python exception and return NULL if error occured.
+ *
+ * source_ref is only used when need to modify original reference.
  */
 void
-PyCDS_MoveInRec(PyObject *op, PyObject **target)
+PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
 {
-    *target = NULL;
-    if (op == NULL) {
+    assert(source_ref != NULL);
+    if (op == NULL || *source_ref == NULL) {
         return;
     }
+    *target = NULL;
     assert(!cds_status.traverse_error);
     PyTypeObject *ty = Py_TYPE(op);
 
     static unsigned long level = 0;
     level++;
 
-    PyCDS_Verbose(1, "%*s%s@%p -> %p", level - 1, "", Py_TYPE(op)->tp_name, op,
+    PyCDS_Verbose(2, "%*s%s@%p -> %p", level - 1, "", Py_TYPE(op)->tp_name, op,
                   target);
 
 #define UNEXPECTED_SINGLETON(op)       \
@@ -534,12 +537,11 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target)
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
 
-        // could be singleton-ed, maybe from marshal?
         if (size == 0) {
-            *target = (PyObject *)&_Py_SINGLETON(bytes_empty);
-            goto _return;
+            UNEXPECTED_SINGLETON(op);
         }
         else if (size == 1) {
+            // maybe from marshal?
             *target = (PyObject *)&_Py_SINGLETON(
                 bytes_characters[PyBytes_AS_STRING(op)[0]]);
             goto _return;
@@ -603,13 +605,34 @@ _Py_COMP_DIAG_POP
         UNTRACK(*target);
     }
     else if (ty == &PyUnicode_Type) {
+        /*
+         * A string could be:
+         * 1. static, immortal, interned;
+         * 2. static, immortal, not interned;
+         * 3-6. not static, immortal/not, interned/not.
+         *
+         * Static strings come from deep freeze (deepfreeze.py) and
+         * pre-initialization (pycore_runtime_init_generated.h).
+         * Static runtime strings are interned, and deep-frozen strings are
+         * not.
+         * */
+
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
-            !_PyCDS_MayBeDeepFreeze(op)) {
+            _PyCDS_InPySingleton(op)) {
             UNEXPECTED_SINGLETON(op);
         }
+        else if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
+                 _PyCDS_MayBeDeepFreeze(op)) {
+            // deep freeze strings?
+        }
 
-        // all strings are supposed to be interned, e.g. _PyStaticCode_Init
-        PyUnicode_InternInPlace(&op);
+        // all strings occurred are supposed to be interned, e.g.
+        // _PyStaticCode_Init
+        //
+        // intern will modify original reference, we should use the
+        // original reference, not copied pointer.
+        PyUnicode_InternInPlace(source_ref);
+        op = *source_ref;
 
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
             goto singleton;
@@ -662,12 +685,9 @@ _Py_COMP_DIAG_POP
     else if (ty == &PyTuple_Type || ty == &PyFrozenSet_Type) {
         // PyTuple_New starts
         PyTupleObject *res;
-        PyTupleObject *src;
-        if (ty != &PyTuple_Type)
-            src = (PyTupleObject *)PySequence_Tuple(op);
-        else
-            src = (PyTupleObject *)op;
+        PyTupleObject *src = (PyTupleObject *)PySequence_Tuple(op);
         Py_ssize_t nitems = PyTuple_Size((PyObject *)src);
+
         if (nitems == 0) {
             UNEXPECTED_SINGLETON(op);
         }
@@ -684,6 +704,8 @@ _Py_COMP_DIAG_POP
         for (Py_ssize_t i = 0; i < nitems; i++) {
             PYCDS_MOVEIN_REC_RETURN(src->ob_item[i], &res->ob_item[i]);
         }
+
+        Py_XDECREF(src);
         *target = (PyObject *)res;
         UNTRACK(*target);
     }
@@ -793,7 +815,7 @@ PyCDS_PatchPyObject(PyObject **ref)
     else if (!PyCDS_InHeap(op)) {
         PyCDS_Verbose(2, "patching other out-heap references.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
-        assert(_PyCDS_InPySingleton(*ref));
+        assert(_PyCDS_InPySingleton(*ref) || _PyCDS_MayBeDeepFreeze(*ref));
     }
     else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
@@ -860,7 +882,7 @@ PyCDS_SetInitializedWithMode(int new_flag)
             (cds_status.mode == CDS_MODE_DISABLED &&
              new_flag == CDS_MODE_DUMP_ARCHIVE)) {
             // good, supposed to change mode after initialization
-            PyCDS_Verbose(1, "change mode after initialization");
+            PyCDS_Verbose(2, "change mode after initialization");
         }
         else {
             set_cds_exception_from_format(
