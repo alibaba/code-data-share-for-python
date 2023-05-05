@@ -662,12 +662,9 @@ _Py_COMP_DIAG_POP
     else if (ty == &PyTuple_Type || ty == &PyFrozenSet_Type) {
         // PyTuple_New starts
         PyTupleObject *res;
-        PyTupleObject *src;
-        if (ty != &PyTuple_Type)
-            src = (PyTupleObject *)PySequence_Tuple(op);
-        else
-            src = (PyTupleObject *)op;
+        PyTupleObject *src = (PyTupleObject *)PySequence_Tuple(op);
         Py_ssize_t nitems = PyTuple_Size((PyObject *)src);
+
         if (nitems == 0) {
             UNEXPECTED_SINGLETON(op);
         }
@@ -684,6 +681,8 @@ _Py_COMP_DIAG_POP
         for (Py_ssize_t i = 0; i < nitems; i++) {
             PYCDS_MOVEIN_REC_RETURN(src->ob_item[i], &res->ob_item[i]);
         }
+
+        Py_XDECREF(src);
         *target = (PyObject *)res;
         UNTRACK(*target);
     }
