@@ -624,17 +624,12 @@ _Py_COMP_DIAG_POP
             // deep freeze strings?
         }
 
+        // all strings occurred are supposed to be interned, e.g.
+        // _PyStaticCode_Init
         if (!PyUnicode_CHECK_INTERNED(op)) {
-            // all strings occurred are supposed to be interned, e.g.
-            // _PyStaticCode_Init
-
-            // intern will modify rc of original
-            // reference, which might cause trouble.
-            //            PyObject *src = Py_NewRef(op);
+            // intern will modify original reference, we should use the
+            // original reference, not copied pointer.
             PyUnicode_InternInPlace(srcref);
-            //            if (src == op) {
-            //                Py_DECREF(op);
-            //            }
             op = *srcref;
         }
 
