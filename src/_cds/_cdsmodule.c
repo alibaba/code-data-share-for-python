@@ -819,7 +819,7 @@ PyCDS_PatchPyObject(PyObject **ref)
     else if (!PyCDS_InHeap(op)) {
         PyCDS_Verbose(2, "patching other out-heap references.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
-        assert(_PyCDS_InPySingleton(*ref));
+        assert(_PyCDS_InPySingleton(*ref) || _PyCDS_MayBeDeepFreeze(*ref));
     }
     else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
