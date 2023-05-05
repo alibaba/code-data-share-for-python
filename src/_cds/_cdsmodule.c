@@ -635,6 +635,7 @@ _Py_COMP_DIAG_POP
             //            if (src == op) {
             //                Py_DECREF(op);
             //            }
+            op = *srcref;
         }
 
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
