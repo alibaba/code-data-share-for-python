@@ -451,7 +451,7 @@ PyCDS_InitMoveIn()
 #define HANDLE_LATIN1(c) \
     PyDict_SetDefault(cds_status.move_in_ctx->static_strings, (c), (c));
 
-#include "string_singletons.h"
+    UNWIND_STATIC;
 
 #undef HANDLE_LITERAL
 #undef HANDLE_ASCII

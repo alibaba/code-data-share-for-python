@@ -9,9 +9,6 @@
 
 #if IS_HASHTABLE
 #include <Python.h>
-#endif
-
-#if IS_HASHTABLE
 #include <internal/pycore_hashtable.h>
 typedef struct _table {
     _Py_hashtable_t *pyHashtable;
