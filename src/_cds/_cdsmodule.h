@@ -3,9 +3,7 @@
 
 #include <Python.h>
 
-#include "pycore_pymem.h"
-
-// immortal & compact long
+// immortal & static objects
 #if PY_MINOR_VERSION >= 12
 #include <internal/pycore_long.h>
 #include <internal/pycore_object.h>
@@ -20,23 +18,15 @@
 #endif
 
 // sizeof(PyGC_Head)
-#if PY_VERSION_HEX >= 0x03090000
 #include <internal/pycore_gc.h>
-#elif PY_VERSION_HEX >= 0x03080000
-#include <objimpl.h>
-#endif
 
-#if PY_VERSION_HEX < 0x03080000
-#error Requires CPython 3.8+.
+#if PY_MINOR_VERSION < 12
+#error Requires CPython 3.12+.
 #endif
 
 #include <stdbool.h>
 
-#if PY_MINOR_VERSION >= 12
 #include "clinic/_cdsmodule.c.h"
-#else
-#include "clinic/_cdsmodule-b411.c.h"
-#endif
 #include "lookup_table.h"
 #include "pythoncapi_compat.h"
 
@@ -202,7 +192,7 @@ _PyCDS_PyUnicode_Copy(PyObject *);
 
 // Formatter doesn't work well on #if inside #define,
 // so we use following function-like masks.
-#if PY_VERSION_HEX >= 0x030A0000
+#if PY_MINOR_VERSION >= 10
 #define IF_10_OR_LATER(xx) xx
 #define IF_9_OR_EARLIER(xx)
 #else
@@ -210,7 +200,7 @@ _PyCDS_PyUnicode_Copy(PyObject *);
 #define IF_9_OR_EARLIER(xx) xx
 #endif
 
-#if PY_VERSION_HEX >= 0x030B0000
+#if PY_MINOR_VERSION >= 11
 #define IF_11_OR_LATER(xx) xx
 #define IF_10_OR_EARLIER(xx)
 #else
@@ -218,7 +208,7 @@ _PyCDS_PyUnicode_Copy(PyObject *);
 #define IF_10_OR_EARLIER(xx) xx
 #endif
 
-#if PY_VERSION_HEX >= 0x030C0000
+#if PY_MINOR_VERSION >= 12
 #define IF_12_OR_LATER(xx) xx
 #define IF_11_OR_EARLIER(xx)
 #else
