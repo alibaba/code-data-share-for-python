@@ -1,9 +1,9 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/cpp
 {
-	"name": "C++",
+	"name": "3.12",
 	"build": {
-		"dockerfile": "Dockerfile"
+		"dockerfile": "3.12.Dockerfile"
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
