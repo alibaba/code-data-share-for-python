@@ -542,8 +542,13 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
         }
         else if (size == 1) {
             // maybe from marshal?
-            *target = (PyObject *)&_Py_SINGLETON(
-                bytes_characters[(Py_UCS1)PyBytes_AS_STRING(op)[0]]);
+
+            const Py_UCS1 char_idx = PyBytes_AS_STRING(op)[0];
+            // The index is supposed to be of type char, and unsigned.
+            // We'll get a wrong, negative index if we do not convert it to
+            // unsigned first.
+            assert(0 <= char_idx && char_idx < 256);
+            *target = (PyObject *)&_Py_SINGLETON(bytes_characters[char_idx]);
             goto _return;
         }
 
