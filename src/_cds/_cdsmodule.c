@@ -543,7 +543,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
         else if (size == 1) {
             // maybe from marshal?
             *target = (PyObject *)&_Py_SINGLETON(
-                bytes_characters[PyBytes_AS_STRING(op)[0]]);
+                bytes_characters[(Py_UCS1)PyBytes_AS_STRING(op)[0]]);
             goto _return;
         }
 
