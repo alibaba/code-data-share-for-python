@@ -544,6 +544,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
             // maybe from marshal?
 
 #define BS(...) (&_Py_SINGLETON(bytes_characters __VA_OPT__([) __VA_ARGS__ __VA_OPT__(])))
+            assert(BS(256) == BS() + 1);
             *target = (PyObject *)BS((Py_UCS1)PyBytes_AS_STRING(op)[0]);
             assert(*target >= (PyObject *)BS());
             assert(*target < (PyObject *)(BS() + 1));
