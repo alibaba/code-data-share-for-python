@@ -543,10 +543,10 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
         else if (size == 1) {
             // maybe from marshal?
 
-#define BS (&_Py_SINGLETON(bytes_characters))
-            *target = (PyObject *)BS[(Py_UCS1)PyBytes_AS_STRING(op)[0]];
-            assert(*target >= (PyObject *)BS);
-            assert(*target < (PyObject *)(BS + 1));
+#define BS(...) (&_Py_SINGLETON(bytes_characters __VA_OPT__([) __VA_ARGS__ __VA_OPT__(])))
+            *target = (PyObject *)BS((Py_UCS1)PyBytes_AS_STRING(op)[0]);
+            assert(*target >= (PyObject *)BS());
+            assert(*target < (PyObject *)(BS() + 1));
 #undef BS
             goto _return;
         }
