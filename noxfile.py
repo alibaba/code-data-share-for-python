@@ -92,6 +92,11 @@ PACKAGES = (
     Package('flask'),
     Package('azure-core', module='azure.core'),
     Package('jsonschema'),
+
+    # Pillow is a package with C extension, and do not involve much CPython's internal library.
+    # So this should be a good test for cds'ing C extensions.
+    Package('Pillow', module=['PIL.Image']),
+
     Package('scipy', conda=True),
 
     Package('tensorflow', conda=True),
