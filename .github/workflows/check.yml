@@ -11,6 +11,17 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.repository != 'alibaba/code-data-share-for-python' }}
 
 jobs:
+  debug-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: python/cpython
+          path: cpython
+      - uses: actions/checkout@v3
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+
   test-cpython:
     runs-on: ubuntu-latest
     strategy:
