@@ -4,6 +4,25 @@ project(pycds)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-function-declaration")
 
+# Only for IDE linting, skbuild will handle wheel dependencies.
+if (NOT SKBUILD)
+    # set(PYTHON_ROOT "")
+    if (NOT SKBUILD_ASSETS)
+        FILE(GLOB SKBUILD_ASSETS RELATIVE ${PYTHON_ROOT} "${PYTHON_ROOT}/lib/python*/site-packages/skbuild/resources/cmake")
+    endif ()
+    if (NOT PYTHON_ROOT OR NOT SKBUILD_ASSETS)
+        message(FATAL_ERROR "Need to specify `PYTHON_ROOT` for the targeting python interpreter and `SKBUILD_ASSETS` for scikit-build cmake files (can be ignored if the installed in the target python).")
+    endif ()
+    set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${SKBUILD_ASSETS}")
+
+    FILE(GLOB include RELATIVE ${PYTHON_ROOT} ${PYTHON_ROOT}/include/python*)
+    FILE(GLOB libpython RELATIVE ${PYTHON_ROOT} ${PYTHON_ROOT}/lib/libpython*)
+
+    set(PYTHON_EXECUTABLE "${PYTHON_ROOT}/bin/python3")
+    set(PYTHON_INCLUDE_DIR "${PYTHON_ROOT}/${include}")
+    set(PYTHON_LIBRARY "${PYTHON_ROOT}/${libpython}")
+endif ()
+
 find_package(PythonExtensions REQUIRED)
 
 add_compile_definitions(Py_BUILD_CORE)  # for sizeof(PyGC_Head)
@@ -19,7 +38,4 @@ python_extension_module(_cds)
 
 install(TARGETS _cds LIBRARY DESTINATION "${PYTHON_RELATIVE_SITE_PACKAGES_DIR}")
 
-# by default site hooks is installed
-if (NOT DEFINED ENV{DISABLE_SITE_HOOK})
-    install(FILES src/artifacts/pycds.pth DESTINATION "${PYTHON_RELATIVE_SITE_PACKAGES_DIR}")
-endif ()
+install(FILES src/artifacts/pycds.pth DESTINATION "${PYTHON_RELATIVE_SITE_PACKAGES_DIR}")

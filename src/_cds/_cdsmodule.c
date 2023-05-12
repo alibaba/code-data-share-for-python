@@ -541,10 +541,10 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
             UNEXPECTED_SINGLETON(op);
         }
         else if (size == 1) {
+            // not static single byte
             // maybe from marshal?
-
 #define BS(...) (&_Py_SINGLETON(bytes_characters __VA_OPT__([) __VA_ARGS__ __VA_OPT__(])))
-            assert(BS(256) == BS() + 1);
+            assert((void *)BS(256) == (void *)(BS() + 1));
             *target = (PyObject *)BS((Py_UCS1)PyBytes_AS_STRING(op)[0]);
             assert(*target >= (PyObject *)BS());
             assert(*target < (PyObject *)(BS() + 1));
@@ -628,6 +628,7 @@ _Py_COMP_DIAG_POP
         }
         else if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
                  _PyCDS_MayBeDeepFreeze(op)) {
+            // static strings but not in _PyRuntime.static_objects.singletons
             // deep freeze strings?
         }
 
