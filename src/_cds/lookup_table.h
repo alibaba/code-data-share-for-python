@@ -9,7 +9,7 @@
 
 #if IS_HASHTABLE
 #include <Python.h>
-#if PY_VERSION_HEX >= 0x03090000
+#if PY_MINOR_VERSION >= 9
 #define CPYTHON_HASHTABLE 1
 #define PYCDS_HASHTABLE 0
 #else

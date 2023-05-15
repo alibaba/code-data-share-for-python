@@ -17,32 +17,28 @@ class CDSTest(CdsTestMixin, unittest.TestCase):
 
             cds.verify(lambda outputs: self.assertIn("exec_module cached 'enum'", outputs[0][2], outputs))
 
-    def test_basic_cds2(self):
+    def run_import_test(self, package):
         with open(self.NAME_LIST, 'w') as f:
-            print('enum', file=f)
+            print(package, file=f)
 
         with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE, clear_list=False) as cds:
             cds.run_dump()
             cds.verify_files()
-            cds.run_share('import enum')
+            cds.run_share(f'import {package}', verbose=2, save_output=True)
+
+            cds.verify(lambda outputs: self.assertIn(f"exec_module cached '{package}'", outputs[0][2], outputs))
+
+    def test_basic_enum(self):
+        self.run_import_test('enum')
 
     def test_basic_collections(self):
-        with open(self.NAME_LIST, 'w') as f:
-            print('collections', file=f)
-
-        with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE, clear_list=False) as cds:
-            cds.run_dump()
-            cds.verify_files()
-            cds.run_share('import collections')
+        self.run_import_test('collections')
 
     def test_basic_datetime(self):
-        with open(self.NAME_LIST, 'w') as f:
-            print('datetime', file=f)
+        self.run_import_test('datetime')
 
-        with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE, clear_list=False) as cds:
-            cds.run_dump()
-            cds.verify_files()
-            cds.run_share('import datetime')
+    def test_basic_hashlib(self):
+        self.run_import_test('hashlib')
 
     @unittest.skipUnless(sys.version_info.minor >= 11, 'test adaptive interpreter since 11')
     def test_deopt_caches(self):

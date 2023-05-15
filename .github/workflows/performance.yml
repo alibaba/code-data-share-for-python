@@ -1,9 +1,9 @@
 name: performance
 
 on:
-  push:
-    branches: [ main ]
-    paths: [ '**.py', 'src/**' ]
+#  push:
+#    branches: [ main ]
+#    paths: [ '**.py', 'src/**' ]
   workflow_dispatch:
 
 concurrency:

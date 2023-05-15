@@ -178,7 +178,7 @@ cmake-build-*/
 _skbuild/
 
 # Perf data
-*.json
-*.json.old
+./*.json
+./*.json.old
 
 README.html
