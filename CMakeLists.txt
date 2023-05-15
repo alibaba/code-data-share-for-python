@@ -13,7 +13,7 @@ if (NOT SKBUILD)
     if (NOT PYTHON_ROOT OR NOT SKBUILD_ASSETS)
         message(FATAL_ERROR "Need to specify `PYTHON_ROOT` for the targeting python interpreter and `SKBUILD_ASSETS` for scikit-build cmake files (can be ignored if the installed in the target python).")
     endif ()
-    set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${SKBUILD_ASSETS}")
+    set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${PYTHON_ROOT}/${SKBUILD_ASSETS}")
 
     FILE(GLOB include RELATIVE ${PYTHON_ROOT} ${PYTHON_ROOT}/include/python*)
     FILE(GLOB libpython RELATIVE ${PYTHON_ROOT} ${PYTHON_ROOT}/lib/libpython*)
