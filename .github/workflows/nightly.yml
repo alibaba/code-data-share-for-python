@@ -1,6 +1,10 @@
 name: check
 
 on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
   schedule:
     # 6:00 of UTF+8 every day
     - cron: '0 22 * * *'
