@@ -400,8 +400,12 @@ PyCDS_LoadArchive(const char *archive)
         struct StringRefList *str_refs =
             cds_status.archive_header->all_string_ref;
         while (str_refs != NULL) {
+#if PY_MINOR_VERSION >= 12
             if (PyCDS_STR_INTERNED(str_refs->str) ==
                 SSTATE_INTERNED_IMMORTAL) {
+#else
+            if (PyCDS_STR_INTERNED(str_refs->str)) {
+#endif
                 PyObject *heap_str = str_refs->str;
                 PyObject *borrowed_str = str_refs->str;
                 PyCDS_Verbose(2, "check string interns at %p.", str_refs->str);
@@ -409,14 +413,32 @@ PyCDS_LoadArchive(const char *archive)
                 PyCDS_STR_INTERNED(str_refs->str) = SSTATE_NOT_INTERNED;
                 PyUnicode_InternInPlace(&borrowed_str);
                 if (borrowed_str != heap_str) {
+#if PY_MINOR_VERSION < 11
+                    // an extra decref is done in previous
+                    // PyUnicode_InternInPlace, so we start from -1 here.
+                    size_t ref_count = -1;
+#endif
+
                     PyCDS_Verbose(
                         2, "string already interned, updating in-heap refs.");
                     // reassign references
                     struct StringRefItem *ref = str_refs->refs;
                     while (ref != NULL) {
+#if PY_MINOR_VERSION < 11
+                        ref_count++;
+#endif
                         *(ref->ref) = borrowed_str;
                         ref = ref->next;
                     }
+
+#if PY_MINOR_VERSION < 11
+                    Py_SET_REFCNT(heap_str, Py_REFCNT(heap_str) - ref_count);
+                    Py_SET_REFCNT(borrowed_str,
+                                  Py_REFCNT(borrowed_str) + ref_count);
+
+                    // rc >= 1 for in-heap references (e.g. from tuple) to str.
+                    assert(Py_REFCNT(heap_str) >= 1);
+#endif
                 }
                 PyCDS_Verbose(2, "string singleton @ %p.", borrowed_str);
             }
@@ -442,6 +464,8 @@ PyCDS_InitMoveIn()
         PyCDS_Table_New();
     cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map =
         PyCDS_Table_New();
+
+#if PY_MINOR_VERSION >= 12
     cds_status.move_in_ctx->static_strings = PyDict_New();
 
 #define HANDLE_LITERAL(lit) \
@@ -456,6 +480,7 @@ PyCDS_InitMoveIn()
 #undef HANDLE_LITERAL
 #undef HANDLE_ASCII
 #undef HANDLE_LATIN1
+#endif
 }
 
 void
@@ -468,7 +493,9 @@ PyCDS_FinalizeMoveIn()
     PyCDS_Table_Destroy(
         cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map);
 
+#if PY_MINOR_VERSION >= 12
     Py_DecRef(cds_status.move_in_ctx->static_strings);
+#endif
 
     free(cds_status.move_in_ctx);
 }
@@ -495,13 +522,13 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
     PyCDS_Verbose(2, "%*s%s@%p -> %p", level - 1, "", Py_TYPE(op)->tp_name, op,
                   target);
 
+#if PY_MINOR_VERSION >= 12
 #define UNEXPECTED_SINGLETON(op)       \
     do {                               \
         PyObject_Print(op, stderr, 0); \
         assert(false);                 \
     } while (0)
 
-#if PY_MINOR_VERSION >= 12
 #define UNTRACK(obj)                \
     do {                            \
         _Py_SetImmortal(obj);       \
@@ -529,14 +556,17 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
     if (ty == &PyBool_Type || ty == &_PyNone_Type || ty == &PyEllipsis_Type) {
         *target = op;
     }
+#if PY_MINOR_VERSION >= 12
     else if (_PyCDS_InPySingleton(op)) {
     singleton:
         *target = op;
     }
+#endif
     else if (ty == &PyBytes_Type) {
         // PyBytesObject_SIZE
         Py_ssize_t size = Py_SIZE(op);
 
+#if PY_MINOR_VERSION >= 12
         if (size == 0) {
             UNEXPECTED_SINGLETON(op);
         }
@@ -551,6 +581,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
 #undef BS
             goto _return;
         }
+#endif
 
         PyBytesObject *res = (PyBytesObject *)PyCDS_Malloc(
             offsetof(PyBytesObject, ob_sval) + 1 + size);
@@ -559,10 +590,14 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
 
 // clang-format off
 #if PY_MINOR_VERSION <= 12
+#if PY_MINOR_VERSION > 10
 _Py_COMP_DIAG_PUSH
 _Py_COMP_DIAG_IGNORE_DEPR_DECLS
         res->ob_shash = -1;
 _Py_COMP_DIAG_POP
+#else
+        res->ob_shash = -1;
+#endif
 #endif
 
         memcpy(res->ob_sval, ((PyBytesObject *)op)->ob_sval, size + 1);
@@ -583,6 +618,7 @@ _Py_COMP_DIAG_POP
         // _PyLong_Copy starts
         PyLongObject *src = (PyLongObject *)op;
 
+#if PY_MINOR_VERSION >= 12
         // small ints
         if (_PyLong_IsCompact(src)) {
             stwodigits ival = ((stwodigits)_PyLong_CompactValue(src));
@@ -590,10 +626,12 @@ _Py_COMP_DIAG_POP
                 UNEXPECTED_SINGLETON(op);
             }
         }
+#endif
 
-        Py_ssize_t size = _PyLong_DigitCount(src);
-
+        Py_ssize_t size;
         // _PyLong_New starts
+#if PY_MINOR_VERSION >= 12
+        size = _PyLong_DigitCount(src);
         PyLongObject *res =
             PyCDS_Malloc(offsetof(PyLongObject, long_value.ob_digit) +
                          size * sizeof(digit));
@@ -604,6 +642,19 @@ _Py_COMP_DIAG_POP
 
         memcpy(res->long_value.ob_digit, src->long_value.ob_digit,
                size * sizeof(digit));
+#else
+        size = Py_SIZE(src);
+        if (size < 0)
+            size = -(size);
+        PyLongObject *res = PyCDS_Malloc(offsetof(PyLongObject, ob_digit) +
+                                         size * sizeof(digit));
+        PyObject_INIT_VAR((PyVarObject *)res, &PyLong_Type, Py_SIZE(src));
+        // _PyLong_New ends
+
+        while (--size >= 0) {
+            res->ob_digit[size] = src->ob_digit[size];
+        }
+#endif
         // _PyLong_Copy ends
 
         *target = (PyObject *)res;
@@ -611,7 +662,7 @@ _Py_COMP_DIAG_POP
     }
     else if (ty == &PyUnicode_Type) {
         /*
-         * A string could be:
+         * Since 3.12, string could be:
          * 1. static, immortal, interned;
          * 2. static, immortal, not interned;
          * 3-6. not static, immortal/not, interned/not.
@@ -622,6 +673,7 @@ _Py_COMP_DIAG_POP
          * not.
          * */
 
+#if PY_MINOR_VERSION >= 12
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC &&
             _PyCDS_InPySingleton(op)) {
             UNEXPECTED_SINGLETON(op);
@@ -631,6 +683,7 @@ _Py_COMP_DIAG_POP
             // static strings but not in _PyRuntime.static_objects.singletons
             // deep freeze strings?
         }
+#endif
 
         // all strings occurred are supposed to be interned, e.g.
         // _PyStaticCode_Init
@@ -640,16 +693,23 @@ _Py_COMP_DIAG_POP
         PyUnicode_InternInPlace(source_ref);
         op = *source_ref;
 
+#if PY_MINOR_VERSION >= 12
         if (PyCDS_STR_INTERNED(op) == SSTATE_INTERNED_IMMORTAL_STATIC) {
             goto singleton;
         }
+#endif
 
         if ((*target = PyCDS_Table_Get(
                  cds_status.move_in_ctx->orig_pyobject_to_in_heap_pyobject_map,
                  op)) != NULL) {
+#if PY_MINOR_VERSION >= 12
             assert(PyCDS_STR_INTERNED(*target) == SSTATE_INTERNED_IMMORTAL);
+#else
+            Py_INCREF(*target);
+#endif
         }
         else { /* String is not in archive yet. */
+#if PY_MINOR_VERSION >= 12
             if ((*target = PyDict_GetItem(
                      cds_status.move_in_ctx->static_strings, op)) != NULL) {
                 // `_Py_ID` are static, and interned.
@@ -659,6 +719,7 @@ _Py_COMP_DIAG_POP
                 // archive to refer to those static strings.
                 goto _return;
             }
+#endif
 
             *target = _PyCDS_PyUnicode_Copy(op);
 
@@ -679,6 +740,13 @@ _Py_COMP_DIAG_POP
             str_refs->next = cds_status.archive_header->all_string_ref;
             cds_status.archive_header->all_string_ref = str_refs;
 
+#if PY_MINOR_VERSION < 12
+            if (PyCDS_STR_INTERNED(*target)) {
+                // extra rc to prevent being freed when interning
+                Py_INCREF(*target);
+            }
+#endif
+
             PyCDS_Table_Insert(
                 cds_status.move_in_ctx->in_heap_str_to_string_ref_list_map,
                 *target, str_refs);
@@ -694,9 +762,11 @@ _Py_COMP_DIAG_POP
         PyTupleObject *src = (PyTupleObject *)PySequence_Tuple(op);
         Py_ssize_t nitems = PyTuple_Size((PyObject *)src);
 
+#if PY_MINOR_VERSION >= 12
         if (nitems == 0) {
             UNEXPECTED_SINGLETON(op);
         }
+#endif
 
         // tuple_alloc & _PyObject_GC_NewVar starts
         size_t var_size = _PyObject_VAR_SIZE(&PyTuple_Type, nitems);
@@ -709,6 +779,9 @@ _Py_COMP_DIAG_POP
 
         for (Py_ssize_t i = 0; i < nitems; i++) {
             PYCDS_MOVEIN_REC_RETURN(src->ob_item[i], &res->ob_item[i]);
+#if PY_MINOR_VERSION < 12
+            Py_INCREF(res->ob_item[i]);
+#endif
         }
 
         Py_XDECREF(src);
@@ -718,13 +791,28 @@ _Py_COMP_DIAG_POP
     else if (ty == &PyCode_Type) {
         PyCodeObject *src = (PyCodeObject *)op;
 
+#if PY_MINOR_VERSION < 11
+        Py_ssize_t *cell2arg = NULL;
+        int n_cellvars = PyTuple_GET_SIZE(src->co_cellvars);
+        if (n_cellvars && src->co_cell2arg) {
+            cell2arg = PyCDS_Malloc(n_cellvars * sizeof(Py_ssize_t));
+            for (int i = 0; i < n_cellvars; i++) {
+                cell2arg[i] = src->co_cell2arg[i];
+            }
+        }
+#endif
+
         PyCodeObject *res;
+#if PY_MINOR_VERSION >= 11
         Py_ssize_t code_count, code_size;
         code_count = ((PyVarObject *)src)->ob_size;
         code_size = code_count * sizeof(_Py_CODEUNIT);
         res = (PyCodeObject *)PyCDS_Malloc(
             offsetof(PyCodeObject, co_code_adaptive) + code_size);
         Py_SET_SIZE(res, code_count);
+#else
+        res = (PyCodeObject *)PyCDS_Malloc(_PyObject_SIZE(&PyCode_Type));
+#endif
         PyObject_INIT(res, &PyCode_Type);
 
 #define SIMPLE_HANDLER(field)    \
@@ -736,52 +824,37 @@ _Py_COMP_DIAG_POP
 #undef PATCH_HANDLER
 #undef SIMPLE_HANDLER
 
+#if PY_MINOR_VERSION >= 12
         static uint32_t _Py_next_func_version = 1;
         res->co_version = _Py_next_func_version++;
 
         res->_co_monitoring = NULL;
+#endif
 
         res->co_weakreflist = NULL;
         res->co_extra = NULL;
+#if PY_MINOR_VERSION >= 11
+#if PY_MINOR_VERSION == 11
+        res->co_warmup = QUICKENING_INITIAL_WARMUP_VALUE;
+#endif
+#if PY_MINOR_VERSION >= 12
         res->_co_cached = NULL;
         res->_co_instrumentation_version = 0;
+#endif
 
-        _Py_CODEUNIT *instructions = _PyCode_CODE(res);
-        memcpy(instructions, _PyCode_CODE(src), code_size);
+        COPY_AND_DEOPT_CODE(res, src, code_count, code_size);
 
-        // codeobject.c:deopt_code() & specialize.c:_PyCode_Quicken()
-        for (int i = 0, opcode = 0; i < code_count; ++i) {
-            int previous_opcode = opcode;
-            opcode = _PyOpcode_Deopt[instructions[i].op.code];
-            int caches = _PyOpcode_Caches[opcode];
-            instructions[i].op.code = opcode;
-            if (caches) {
-                for (int j = 1; j <= caches; j++) {
-                    instructions[i + j].cache = 0;
-                }
-                instructions[i + 1].cache = adaptive_counter_warmup();
-                i += caches;
-                continue;
-            }
-            switch (previous_opcode << 8 | opcode) {
-                case LOAD_CONST << 8 | LOAD_FAST:
-                    instructions[i - 1].op.code = LOAD_CONST__LOAD_FAST;
-                    break;
-                case LOAD_FAST << 8 | LOAD_CONST:
-                    instructions[i - 1].op.code = LOAD_FAST__LOAD_CONST;
-                    break;
-                case LOAD_FAST << 8 | LOAD_FAST:
-                    instructions[i - 1].op.code = LOAD_FAST__LOAD_FAST;
-                    break;
-                case STORE_FAST << 8 | LOAD_FAST:
-                    instructions[i - 1].op.code = STORE_FAST__LOAD_FAST;
-                    break;
-                case STORE_FAST << 8 | STORE_FAST:
-                    instructions[i - 1].op.code = STORE_FAST__STORE_FAST;
-                    break;
-            }
-        }
+#else  // PY_MINOR_VERSION < 11
+        res->co_cell2arg = cell2arg;
 
+        res->co_opcache_map = NULL;
+        res->co_opcache = NULL;
+        res->co_opcache_flag = 0;
+        res->co_opcache_size = 0;
+#if PY_MINOR_VERSION < 10
+        res->co_zombieframe = NULL;
+#endif
+#endif
         *target = (PyObject *)res;
         UNTRACK(*target);
     }
@@ -818,11 +891,13 @@ PyCDS_PatchPyObject(PyObject **ref)
         PyCDS_Verbose(2, "patching basic types.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
     }
+#if PY_MINOR_VERSION >= 12
     else if (!PyCDS_InHeap(op)) {
         PyCDS_Verbose(2, "patching other out-heap references.");
         *ref = UNSHIFT(op, cds_status.shift, PyObject);
         assert(_PyCDS_InPySingleton(*ref) || _PyCDS_MayBeDeepFreeze(*ref));
     }
+#endif
     else if (Py_TYPE(op) == &PyUnicode_Type) {
         PyCDS_Verbose(2, "string singleton already patched.");
     }
@@ -919,19 +994,6 @@ PyCDS_SetVerbose(int new_flag)
     return Py_NewRef(Py_None);
 }
 
-bool
-_PyCDS_MayBeDeepFreeze(PyObject *op)
-{
-    return (void *)op < (void *)&_PyRuntime;
-}
-
-bool
-_PyCDS_InPySingleton(PyObject *op)
-{
-    return (void *)op >= (void *)&_PyRuntime.static_objects.singletons &&
-           (void *)op < (void *)(&_PyRuntime.static_objects.singletons + 1);
-}
-
 PyObject *
 _PyCDS_PyUnicode_Copy(PyObject *op)
 {
@@ -944,12 +1006,14 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
     Py_UCS4 maxchar = PyUnicode_MAX_CHAR_VALUE(op);
 
     // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) starts
+#if PY_MINOR_VERSION >= 12
     assert(size > 0);
+#endif
 
     PyCompactUnicodeObject *unicode;
     void *data;
     enum PyUnicode_Kind kind;
-    int is_ascii = 0;
+    int is_sharing = 0, is_ascii = 0;
     Py_ssize_t char_size;
     Py_ssize_t struct_size;
 
@@ -967,10 +1031,14 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
     else if (maxchar < 65536) {
         kind = PyUnicode_2BYTE_KIND;
         char_size = 2;
+        if (sizeof(wchar_t) == 2)
+            is_sharing = 1;
     }
     else {
         kind = PyUnicode_4BYTE_KIND;
         char_size = 4;
+        if (sizeof(wchar_t) == 4)
+            is_sharing = 1;
     }
 
     res = (PyObject *)PyCDS_Malloc(struct_size + (size + 1) * char_size);
@@ -983,9 +1051,16 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
         data = unicode + 1;
     (((PyASCIIObject *)(unicode))->length) = size;
     (((PyASCIIObject *)(unicode))->hash) = -1;
+#if PY_MINOR_VERSION >= 12
     PyCDS_STR_INTERNED(unicode) = SSTATE_INTERNED_IMMORTAL;
+#else
+    PyCDS_STR_INTERNED(unicode) = PyCDS_STR_INTERNED(op);
+#endif
     (((PyASCIIObject *)(unicode))->state).kind = kind;
     (((PyASCIIObject *)(unicode))->state).compact = 1;
+#if PY_MINOR_VERSION < 12
+    (((PyASCIIObject *)(unicode))->state).ready = 1;
+#endif
     (((PyASCIIObject *)(unicode))->state).ascii = is_ascii;
     if (is_ascii) {
         ((char *)data)[size] = 0;
@@ -1002,6 +1077,16 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
             ((Py_UCS2 *)data)[size] = 0;
         else /* kind == PyUnicode_4BYTE_KIND */
             ((Py_UCS4 *)data)[size] = 0;
+#if PY_MINOR_VERSION < 12
+        if (is_sharing) {
+            (((PyCompactUnicodeObject *)(unicode))->wstr_length) = size;
+            (((PyASCIIObject *)(unicode))->wstr) = (wchar_t *)data;
+        }
+        else {
+            (((PyCompactUnicodeObject *)(unicode))->wstr_length) = 0;
+            (((PyASCIIObject *)(unicode))->wstr) = NULL;
+        }
+#endif
     }
     // PyUnicode_New(Py_ssize_t size, Py_UCS4 maxchar) ends
     assert(PyUnicode_KIND(res) == PyUnicode_KIND(op));
@@ -1011,7 +1096,24 @@ _PyCDS_PyUnicode_Copy(PyObject *op)
     assert(_PyUnicode_CheckConsistency(res, true));
     // _PyUnicode_Copy ends
 
+#if PY_MINOR_VERSION >= 12
     _Py_SetImmortal(res);
+#endif
 
     return res;
 }
+
+#if PY_MINOR_VERSION >= 12
+bool
+_PyCDS_MayBeDeepFreeze(PyObject *op)
+{
+    return (void *)op < (void *)&_PyRuntime;
+}
+
+bool
+_PyCDS_InPySingleton(PyObject *op)
+{
+    return (void *)op >= (void *)&_PyRuntime.static_objects.singletons &&
+           (void *)op < (void *)(&_PyRuntime.static_objects.singletons + 1);
+}
+#endif

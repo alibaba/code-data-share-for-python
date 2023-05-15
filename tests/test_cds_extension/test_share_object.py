@@ -73,9 +73,9 @@ class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
     @assert_archive_created
     def test_bytes_char_singleton(self):
         for c in random.sample(string.printable, 10):
-            self.run_serialize_test(c.encode(), is_a=True)
+            self.run_serialize_test(c.encode(), is_a=sys.version_info.minor >= 12)
 
-        self.run_serialize_test(b'', is_a=True)
+        self.run_serialize_test(b'', is_a=sys.version_info.minor >= 12)
 
     @assert_archive_created
     def test_bytes(self):
@@ -84,9 +84,9 @@ class ShareObjectTest(ShareObjectTestMixin, unittest.TestCase):
     @assert_archive_created
     def test_long(self):
         for i in (0, 1, 10, 100, 2 ** 100):
-            self.run_serialize_test(i, is_a=(-5 <= i < 128))
+            self.run_serialize_test(i, is_a=(-5 <= i < 128) and sys.version_info.minor >= 12)
             if i != 0:
-                self.run_serialize_test(-i, is_a=(-5 <= -i < 128))
+                self.run_serialize_test(-i, is_a=(-5 <= -i < 128) and sys.version_info.minor >= 12)
 
     @assert_archive_created
     def test_float(self):
@@ -252,6 +252,7 @@ class InternStringTest(CdsTestMixin, unittest.TestCase):
         else:
             self.assertFalse(is_shared(id_interned), (s, id_interned))
 
+    @unittest.skipUnless(sys.version_info.minor >= 12, 'test static objects since 12')
     @assert_archive_created
     def test_share_statically_interned_str(self):
         # see cpython/Include/internal/pycore_runtime_init_generated.h for statically allocated strings
@@ -267,6 +268,7 @@ class InternStringTest(CdsTestMixin, unittest.TestCase):
 
             self.run_check(s + random.choice(string.punctuation.replace('_', '')), False, True, True)
 
+    @unittest.skipUnless(sys.version_info.minor >= 12, 'test static objects since 12')
     @assert_archive_created
     def test_share_static_ascii_latin1(self):
         for i in random.sample(range(0, 128), 10):

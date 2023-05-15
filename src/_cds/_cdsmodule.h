@@ -18,15 +18,23 @@
 #endif
 
 // sizeof(PyGC_Head)
+#if PY_MINOR_VERSION >= 9
 #include <internal/pycore_gc.h>
+#else
+#include <objimpl.h>
+#endif
 
-#if PY_MINOR_VERSION < 12
-#error Requires CPython 3.12+.
+#if PY_MINOR_VERSION < 8
+#error Requires CPython 3.8+.
 #endif
 
 #include <stdbool.h>
 
+#if PY_MINOR_VERSION >= 12
 #include "clinic/_cdsmodule.c.h"
+#else
+#include "clinic/_cdsmodule-b4-312.c.h"
+#endif
 #include "lookup_table.h"
 #include "pythoncapi_compat.h"
 
@@ -65,7 +73,9 @@ struct MoveInContext {
     table *orig_pyobject_to_in_heap_pyobject_map;
     table *in_heap_str_to_string_ref_list_map;
 
+#if PY_MINOR_VERSION >= 12
     PyObject *static_strings;
+#endif
 };
 
 /*
@@ -179,16 +189,22 @@ PyCDS_SetInitializedWithMode(int new_flag);
 PyObject *
 PyCDS_SetVerbose(int new_flag);
 
+PyObject *
+_PyCDS_PyUnicode_Copy(PyObject *);
+
+#if PY_MINOR_VERSION >= 12
 bool
 _PyCDS_MayBeDeepFreeze(PyObject *);
 
 bool
 _PyCDS_InPySingleton(PyObject *);
+#endif
 
-PyObject *
-_PyCDS_PyUnicode_Copy(PyObject *);
-
+#if PY_MINOR_VERSION >= 12
 #define PyCDS_STR_INTERNED(op) (_PyASCIIObject_CAST(op)->state.interned)
+#else
+#define PyCDS_STR_INTERNED(op) (((PyASCIIObject *)(op))->state.interned)
+#endif
 
 // Formatter doesn't work well on #if inside #define,
 // so we use following function-like masks.
@@ -300,5 +316,61 @@ _PyCDS_PyUnicode_Copy(PyObject *);
         HANDLE_LATIN1((PyObject *)&_PyRuntime.static_objects.singletons \
                           .strings.latin1[i]);                          \
     }
+
+#if PY_MINOR_VERSION >= 11
+static inline void
+COPY_AND_DEOPT_CODE(PyCodeObject *res, PyCodeObject *src,
+                    const Py_ssize_t code_count, const Py_ssize_t code_size)
+{
+    _Py_CODEUNIT *instructions = _PyCode_CODE(res);
+    memcpy(instructions, src->co_code_adaptive, code_size);
+    memcpy(instructions, _PyCode_CODE(src), code_size);
+
+#if PY_MINOR_VERSION == 11
+    for (int i = 0; i < code_count; ++i) {
+        _Py_CODEUNIT instruction = instructions[i];
+        int opcode = _PyOpcode_Deopt[_Py_OPCODE(instruction)];
+        int caches = _PyOpcode_Caches[opcode];
+        instructions[i] = _Py_MAKECODEUNIT(opcode, _Py_OPARG(instruction));
+        while (caches--) {
+            instructions[++i] = _Py_MAKECODEUNIT(CACHE, 0);
+        }
+    }
+#else
+    // codeobject.c:deopt_code() & specialize.c:_PyCode_Quicken()
+    for (int i = 0, opcode = 0; i < code_count; ++i) {
+        int previous_opcode = opcode;
+        opcode = _PyOpcode_Deopt[instructions[i].op.code];
+        int caches = _PyOpcode_Caches[opcode];
+        instructions[i].op.code = opcode;
+        if (caches) {
+            for (int j = 1; j <= caches; j++) {
+                instructions[i + j].cache = 0;
+            }
+            instructions[i + 1].cache = adaptive_counter_warmup();
+            i += caches;
+            continue;
+        }
+        switch (previous_opcode << 8 | opcode) {
+            case LOAD_CONST << 8 | LOAD_FAST:
+                instructions[i - 1].op.code = LOAD_CONST__LOAD_FAST;
+                break;
+            case LOAD_FAST << 8 | LOAD_CONST:
+                instructions[i - 1].op.code = LOAD_FAST__LOAD_CONST;
+                break;
+            case LOAD_FAST << 8 | LOAD_FAST:
+                instructions[i - 1].op.code = LOAD_FAST__LOAD_FAST;
+                break;
+            case STORE_FAST << 8 | LOAD_FAST:
+                instructions[i - 1].op.code = STORE_FAST__LOAD_FAST;
+                break;
+            case STORE_FAST << 8 | STORE_FAST:
+                instructions[i - 1].op.code = STORE_FAST__STORE_FAST;
+                break;
+        }
+    }
+#endif
+}
+#endif
 
 #endif  // PYCDS__CDSMODULE_H

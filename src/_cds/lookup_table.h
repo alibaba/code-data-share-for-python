@@ -5,13 +5,28 @@
 
 #define IS_HASHTABLE 1
 // for debugging hash table
-#define IS_LINKED_LIST !IS_HASHTABLE
+#define IS_LINKED_LIST 0
 
 #if IS_HASHTABLE
 #include <Python.h>
+#if PY_MINOR_VERSION >= 9
+#define CPYTHON_HASHTABLE 1
+#define PYCDS_HASHTABLE 0
+#else
+#define CPYTHON_HASHTABLE 0
+#define PYCDS_HASHTABLE 1
+#endif
+#endif
+
+#if IS_HASHTABLE && CPYTHON_HASHTABLE
 #include <internal/pycore_hashtable.h>
 typedef struct _table {
     _Py_hashtable_t *pyHashtable;
+} table;
+#elif IS_HASHTABLE && PYCDS_HASHTABLE
+#include "hashtable.h"
+typedef struct _table {
+    hashtable_t *ht;
 } table;
 #elif IS_LINKED_LIST
 typedef struct _list_node {

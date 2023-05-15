@@ -12,14 +12,18 @@ concurrency:
 
 jobs:
   test-cpython:
-    if: false
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         # for actions/setup-python:
         # https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json
-        python: [ "3.12.0-beta.1" ]
+        python:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          # - "3.12.0-beta.1"
 
     steps:
       - uses: actions/checkout@v3
@@ -36,7 +40,6 @@ jobs:
 
   test-conda:
     runs-on: ubuntu-latest
-    if: false
 
     steps:
       - uses: actions/checkout@v3
