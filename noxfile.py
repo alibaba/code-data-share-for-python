@@ -111,10 +111,7 @@ PACKAGES = (
     Package('seaborn', conda=True),
     Package('azureml-core', module='azureml.core'),
 
-    # opencv from conda have issue in debian-based system:
-    # https://stackoverflow.com/questions/64664094/i-cannot-use-opencv2-and-received-importerror-libgl-so-1-cannot-open-shared-obj
-    # skip on linux until this can be fixed / skipped on centos / debian / alios
-    Package('opencv', conda=True, module='cv2', skip=lambda _: OS == 'Linux')
+    Package('opencv-python', module='cv2')
 )
 
 for py in SUPPORTED_PYTHONS:
