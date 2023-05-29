@@ -44,6 +44,11 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, macOS-latest ]
+        conda-py:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
 
     steps:
       - uses: actions/checkout@v3
@@ -56,10 +61,10 @@ jobs:
           python -m pip install nox
       - name: Test with pytest
         run: |
-          nox -s tests_multiple_conda
+          nox -s tests_multiple_conda-${{ matrix.conda-py }}
       - name: Test imports
         run: |
-          nox -t test_import_third_party
+          nox -s test_import_third_party-${{ matrix.conda-py }}
 
   test-twine:
     runs-on: ubuntu-latest

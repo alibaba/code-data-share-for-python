@@ -118,10 +118,7 @@ PACKAGES = (
 )
 
 for py in SUPPORTED_PYTHONS:
-    py_id = py.replace('.', '_')
-
-
-    @nox.session(name=f'test_import_third_party_{py_id}', tags=['test_import_third_party'], python=py)
+    @nox.session(name=f'test_import_third_party-{py}', tags=['test_import_third_party'], python=py)
     @nox.parametrize('package', [package for package in PACKAGES if not package.should_skip(py)])
     def test_import_third_party(session: nox.Session, package):
         """
@@ -143,7 +140,7 @@ for py in SUPPORTED_PYTHONS:
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
 
-    @nox.session(name=f'test_import_third_party_perf_{py_id}', tags=['test_import_third_party_perf'], python=py)
+    @nox.session(name=f'test_import_third_party_perf-{py}', tags=['test_import_third_party_perf'], python=py)
     @nox.parametrize('package', [package for package in PACKAGES if not package.should_skip(py)])
     def test_import_third_party_perf(session: nox.Session, package):
         """
