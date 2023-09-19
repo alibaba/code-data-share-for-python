@@ -42,6 +42,7 @@ def run_dump(class_list: str, archive: str):
                 getattr(module, i, None) for i in
                 ('__package__', '__file__', '__path__')
             )
+            err = False
             # __path__ must be an iterable of strings,
             # we convert any valid __path__ to tuple of strings.
             # Ref: https://docs.python.org/3/reference/import.html#module-path
@@ -50,17 +51,16 @@ def run_dump(class_list: str, archive: str):
             elif isinstance(path, str):
                 # Some package might change this, which is non-standard.
                 # There is no correct way to handle this.
-                # We retain the file location to maintain the original import function,
-                # and also record the `path` for debugging purposes.
-                import os.path
-                path = (os.path.dirname(file), path)
+                # Do not cache this.
+                err = True
             else:
                 try:
                     path = tuple(path)
                 except TypeError:
                     _verbose(f"{name}.__path__ is not iterable: {path}", 1)
-                    path = None
-            meta_map[name] = (package, file, path)
+                    err = True
+            if not err:
+                meta_map[name] = (package, file, path)
             return module
 
         return wrap_exec_module
