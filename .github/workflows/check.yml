@@ -27,7 +27,7 @@ jobs:
         os: [ ubuntu-latest, macOS-latest ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v4
         with:
@@ -51,7 +51,7 @@ jobs:
           - "3.11"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: s-weigand/setup-conda@v1
         with:
           conda-channels: conda-forge
@@ -73,7 +73,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
       - name: Install dependencies
@@ -91,7 +91,7 @@ jobs:
     name: Formatting Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
       - name: Install dependencies
