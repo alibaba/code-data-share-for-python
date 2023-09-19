@@ -45,7 +45,17 @@ def run_dump(class_list: str, archive: str):
             # __path__ must be an iterable of strings,
             # we convert any valid __path__ to tuple of strings.
             # Ref: https://docs.python.org/3/reference/import.html#module-path
-            path = tuple(path) if path else None
+            if path is None:
+                pass
+            elif isinstance(path, str):
+                # Some package might change this, which is non-standard.
+                # There is no correct way to handle this.
+                # We retain the file location to maintain the original import function,
+                # and also record the `path` for debugging purposes.
+                import os.path
+                path = (os.path.dirname(file), path)
+            else:
+                path = tuple(path)
             meta_map[name] = (package, file, path)
             return module
 
