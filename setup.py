@@ -10,7 +10,7 @@ for i in (Path(__file__).resolve().parent / "_skbuild").rglob("CMakeCache.txt"):
 
 setup(
     name='code-data-share',
-    version='0.1.0',
+    version='0.0.3',
     packages=['cds'],
     package_dir={'': 'src'},
     python_requires='>=3.8.0',
