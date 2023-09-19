@@ -65,9 +65,9 @@ jobs:
       - name: Test imports
         run: |
           nox -s test_import_third_party-${{ matrix.conda-py }}
-#      - name: Setup tmate session
-#        if: ${{ failure() }}
-#        uses: mxschmitt/action-tmate@v3
+      - name: Setup tmate session
+        if: ${{ failure() && false }}
+        uses: mxschmitt/action-tmate@v3
 
   test-twine:
     runs-on: ubuntu-latest
