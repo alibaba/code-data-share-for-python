@@ -1,5 +1,24 @@
+[project]
+name = "code-data-share"
+version = "0.0.3"
+readme = "README.rst"
+requires-python = ">=3.8"
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Operating System :: MacOS :: MacOS X',
+    # 'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX :: Linux',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: Implementation :: CPython',
+]
+
 [build-system]
-requires = ["setuptools", "wheel", "scikit-build", "cmake", "ninja"]
+requires = ["scikit-build-core"]
+build-backend = "scikit_build_core.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -13,3 +32,6 @@ skip = "*-musllinux*"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "universal2", "arm64"]
+
+[tool.scikit-build]
+wheel.packages = ["src/cds"]
