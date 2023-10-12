@@ -23,19 +23,18 @@ if (NOT SKBUILD)
     set(PYTHON_LIBRARY "${PYTHON_ROOT}/${libpython}")
 endif ()
 
-find_package(PythonExtensions REQUIRED)
+find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development.Module)
 
 add_compile_definitions(Py_BUILD_CORE)  # for sizeof(PyGC_Head)
 add_compile_definitions(NEED_OPCODE_TABLES)  # for _PyOpcode_Caches and _PyOpcode_Deopt
 
-add_library(_cds MODULE src/_cds/_cdsmodule.c src/_cds/lookup_table.c src/_cds/hashtable.c)
+python_add_library(_cds MODULE WITH_SOABI src/_cds/_cdsmodule.c src/_cds/lookup_table.c src/_cds/hashtable.c)
 # clinic-generated files access core header.
 target_include_directories(_cds PRIVATE "${PYTHON_INCLUDE_DIR}/internal")
-python_extension_module(_cds)
 
 # todo: if find cpython repo, run clinic
 # currently we manually run `python3 ../cpython/Tools/clinic/clinic.py --make --srcdir src/_cds`
 
-install(TARGETS _cds LIBRARY DESTINATION "${PYTHON_RELATIVE_SITE_PACKAGES_DIR}")
+install(TARGETS _cds DESTINATION .)
 
-install(FILES src/artifacts/pycds.pth DESTINATION "${PYTHON_RELATIVE_SITE_PACKAGES_DIR}")
+install(FILES src/artifacts/pycds.pth DESTINATION .)
