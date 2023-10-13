@@ -42,11 +42,25 @@ def run_dump(class_list: str, archive: str):
                 getattr(module, i, None) for i in
                 ('__package__', '__file__', '__path__')
             )
+            err = False
             # __path__ must be an iterable of strings,
             # we convert any valid __path__ to tuple of strings.
             # Ref: https://docs.python.org/3/reference/import.html#module-path
-            path = tuple(path) if path else None
-            meta_map[name] = (package, file, path)
+            if not path:
+                path = None
+            elif isinstance(path, str):
+                # Some package might change this, which is non-standard.
+                # There is no correct way to handle this.
+                # Do not cache this.
+                err = True
+            else:
+                try:
+                    path = tuple(path)
+                except TypeError:
+                    _verbose(f"{name}.__path__ is not iterable: {path}", 1)
+                    err = True
+            if not err:
+                meta_map[name] = (package, file, path)
             return module
 
         return wrap_exec_module
@@ -68,8 +82,9 @@ def run_dump(class_list: str, archive: str):
                 _verbose(f'executing module {line} triggers an SystemExit({e.code}), ignoring.', 1)
             except Exception as e:
                 _verbose(f'executing module {line} triggers an {e.__class__.__name__}, traceback:', 1)
+                import sys
                 import traceback
-                _verbose(''.join(traceback.format_exception(e)), 1)
+                _verbose(''.join(traceback.format_exception(*sys.exc_info())), 1)
 
     shared_class_data = tuple([(k, v) for k, v in {
         k: (*meta_map[k], code_map[k])

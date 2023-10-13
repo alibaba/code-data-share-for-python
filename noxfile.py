@@ -21,15 +21,6 @@ DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
 CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
 
 
-def _site_hook_env(without_site_hook=False):
-    d = os.environ.copy()
-    if without_site_hook:
-        d[DISABLE_SITE_HOOK_KEY] = 'TRUE'
-    elif DISABLE_SITE_HOOK_KEY in d:
-        del d[DISABLE_SITE_HOOK_KEY]
-    return d
-
-
 def _py_version(session: nox.Session):
     """
     :return: "3.9", "3.10", ...
@@ -50,6 +41,7 @@ class Package(t.NamedTuple):
     name: str
     module: t.Union[t.List[str], str, None] = None
     conda: bool = False
+    skip: t.Optional[t.Callable[[str], bool]] = None
 
     def __repr__(self):
         return self.name
@@ -69,6 +61,11 @@ class Package(t.NamedTuple):
             session.conda_install(self.name)
         else:
             session.install(self.name)
+
+    def should_skip(self, py_version):
+        if self.skip:
+            return self.skip(py_version)
+        return False
 
 
 @nox.session(venv_backend='venv')
@@ -101,34 +98,25 @@ PACKAGES = (
     Package('flask'),
     Package('azure-core', module='azure.core'),
     Package('jsonschema'),
+
+    # Pillow is a package with C extension, and do not involve much CPython's internal library.
+    # So this should be a good test for cds'ing C extensions.
+    Package('Pillow', module=['PIL.Image']),
+
     Package('scipy', conda=True),
 
-    Package('tensorflow', conda=True),
+    # conda-provided tf might require pypy and this is not what we want,
+    # and pypi only provides tf for CPython <= 3.11
+    Package('tensorflow', skip=lambda _py: _py in ('3.12',)),
     Package('seaborn', conda=True),
     Package('azureml-core', module='azureml.core'),
-    Package('opencv', conda=True, module='cv2')
+
+    Package('opencv-python', module='cv2')
 )
 
-
-def skip_package(package: Package, python) -> bool:
-    if package.name == 'tensorflow' and python in ('3.11',):
-        # conda does not have tf on python 3.11 yet
-        return True
-    elif package.name == 'opencv':
-        # opencv from conda have issue in debian-based system:
-        # https://stackoverflow.com/questions/64664094/i-cannot-use-opencv2-and-received-importerror-libgl-so-1-cannot-open-shared-obj
-        # skip on linux until this can be fixed / skipped on centos / debian / alios
-        if OS == 'Linux':
-            return True
-    return False
-
-
 for py in SUPPORTED_PYTHONS:
-    py_id = py.replace('.', '_')
-
-
-    @nox.session(name=f'test_import_third_party_{py_id}', tags=['test_import_third_party'], python=py)
-    @nox.parametrize('package', [package for package in PACKAGES if not skip_package(package, py)])
+    @nox.session(name=f'test_import_third_party-{py}', tags=['test_import_third_party'], python=py)
+    @nox.parametrize('package', [package for package in PACKAGES if not package.should_skip(py)])
     def test_import_third_party(session: nox.Session, package):
         """
         Test import with / without PyCDS.
@@ -149,8 +137,8 @@ for py in SUPPORTED_PYTHONS:
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
 
-    @nox.session(name=f'test_import_third_party_perf_{py_id}', tags=['test_import_third_party_perf'], python=py)
-    @nox.parametrize('package', [package for package in PACKAGES if not skip_package(package, py)])
+    @nox.session(name=f'test_import_third_party_perf-{py}', tags=['test_import_third_party_perf'], python=py)
+    @nox.parametrize('package', [package for package in PACKAGES if not package.should_skip(py)])
     def test_import_third_party_perf(session: nox.Session, package):
         """
         Benchmark import statements w./w.o. CDS.
@@ -250,17 +238,7 @@ def build_wheel(session: nox.Session):
     """
 
     session.install("build")
-    session.run("python", "-m", "build", "--wheel", env=_site_hook_env(True))
-
-
-@nox.session(python=SUPPORTED_PYTHONS)
-def build_wheel_no_site_hook(session: nox.Session):
-    """
-    Make a wheel.
-    """
-
-    session.install("build")
-    session.run("python", "-m", "build", "--wheel", env=_site_hook_env(False))
+    session.run("python", "-m", "build", "--wheel")
 
 
 @nox.session(venv_backend='venv')

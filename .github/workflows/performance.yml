@@ -1,9 +1,9 @@
 name: performance
 
 on:
-  push:
-    branches: [ main ]
-    paths: [ '**.py', 'src/**' ]
+#  push:
+#    branches: [ main ]
+#    paths: [ '**.py', 'src/**' ]
   workflow_dispatch:
 
 concurrency:
@@ -18,7 +18,7 @@ jobs:
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: s-weigand/setup-conda@v1
         with:
           conda-channels: conda-forge
@@ -37,7 +37,7 @@ jobs:
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: s-weigand/setup-conda@v1
         with:
           conda-channels: conda-forge

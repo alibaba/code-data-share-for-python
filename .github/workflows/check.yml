@@ -16,16 +16,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # for actions/setup-python:
         # https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json
-        python-version: [ "3.8", "3.9", "3.10", "3.11" ]
+        python:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
 
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python }}
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -38,9 +44,15 @@ jobs:
     strategy:
       matrix:
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
+        conda-py:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: s-weigand/setup-conda@v1
         with:
           conda-channels: conda-forge
@@ -50,16 +62,19 @@ jobs:
           python -m pip install nox
       - name: Test with pytest
         run: |
-          nox -s tests_multiple_conda
+          nox -s tests_multiple_conda-${{ matrix.conda-py }}
       - name: Test imports
         run: |
-          nox -t test_import_third_party
+          nox -s test_import_third_party-${{ matrix.conda-py }}
+      - name: Setup tmate session
+        if: ${{ failure() && false }}
+        uses: mxschmitt/action-tmate@v3
 
   test-twine:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
       - name: Install dependencies
@@ -77,7 +92,7 @@ jobs:
     name: Formatting Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v4
       - name: Install dependencies
@@ -88,7 +103,7 @@ jobs:
         run: |
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
       - name: Run clang-format style check
-        uses: jidicula/clang-format-action@v4.9.0
+        uses: jidicula/clang-format-action@v4.11.0
         with:
           clang-format-version: '13'
           check-path: 'src/_cds'

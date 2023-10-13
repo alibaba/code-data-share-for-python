@@ -6,7 +6,7 @@ from . import CDSCase
 
 
 class DumpTest(CdsTestMixin, unittest.TestCase):
-    def test_trace(self):
+    def test_trace_json(self):
         with CDSCase(self, self.NAME_LIST, self.TEST_ARCHIVE) as cds:
             cds.run_trace('import json')
             cds.verify_files(check_archive=False)
@@ -15,7 +15,7 @@ class DumpTest(CdsTestMixin, unittest.TestCase):
                 'json',
                 [line.strip() for line in Path(self.NAME_LIST).read_text().split('\n')]))
 
-    def test_dump_archive_from_list(self):
+    def test_dump_archive_from_list_json(self):
         with open(self.NAME_LIST, 'w') as f:
             print('json', file=f)
 

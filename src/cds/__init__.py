@@ -20,7 +20,7 @@ def _verbose(msg, verbosity=1):
     # this function will be called in import progress,
     # which might cause cyclic import.
     if _cds.flags.verbose >= verbosity:
-        print(f'[CDS] {msg}', file=sys.stderr, flush=True)
+        print(f'[cds] {msg}', file=sys.stderr, flush=True)
 
 
 def trace(class_list: str):
@@ -34,6 +34,7 @@ def trace(class_list: str):
         def wrap_get_code(self, name):
             code = orig_get_code(self, name)
             print(name, file=f, flush=True)
+            _verbose(f'code: {code}', 2)
             return code
 
         return wrap_get_code
@@ -140,13 +141,10 @@ class CDSFinder:
 
 def init_from_env():
     if _cds._get_initialized():
-        _verbose('cds.init_from_env re-entered', 1)
+        _verbose('cds.init_from_env re-entered', 2)
         return
 
-    MODE_KEY = 'PYCDSMODE'
-
     verbosity = os.environ.get('PYCDSVERBOSE', None)
-    mode = os.environ.get(MODE_KEY, None)
     if verbosity is not None:
         try:
             verbosity = int(verbosity)
@@ -157,6 +155,12 @@ def init_from_env():
             _verbose('failed to parse PYCDSVERBOSE, ignoring', 0)
         except AssertionError:
             _verbose('PYCDSVERBOSE should be [0, 2]', 0)
+
+    _verbose('cds.init_from_env', 1)
+
+    MODE_KEY = 'PYCDSMODE'
+
+    mode = os.environ.get(MODE_KEY, None)
     if mode is not None:
         class_list = os.environ.get('PYCDSLIST')
         archive = os.environ.get('PYCDSARCHIVE')
