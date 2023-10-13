@@ -364,8 +364,7 @@ PyCDS_LoadArchive(const char *archive)
     }
 
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
-    close(cds_status.archive_fd);
-    cds_status.archive_fd = 0;
+    close_archive(&cds_status.archive_fd);
 
 #if M_POPULATE == 0
     for (size_t i = 0; i < cds_status.archive_header->used; i += 4096) {
@@ -442,8 +441,7 @@ PyCDS_LoadArchive(const char *archive)
     return shm;
 
 fail:
-    close(cds_status.archive_fd);
-    cds_status.archive_fd = 0;
+    close_archive(&cds_status.archive_fd);
     return NULL;
 }
 
@@ -565,11 +563,12 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
         else if (size == 1) {
             // not static single byte
             // maybe from marshal?
-#define BS(...) (&_Py_SINGLETON(bytes_characters __VA_OPT__([) __VA_ARGS__ __VA_OPT__(])))
-            assert((void *)BS(256) == (void *)(BS() + 1));
-            *target = (PyObject *)BS((Py_UCS1)PyBytes_AS_STRING(op)[0]);
-            assert(*target >= (PyObject *)BS());
-            assert(*target < (PyObject *)(BS() + 1));
+#define BS (&_Py_SINGLETON(bytes_characters))
+#define BSi(i) (&_Py_SINGLETON(bytes_characters[i]))
+            assert((void *)BSi(256) == (void *)(BS + 1));
+            *target = (PyObject *)BSi((Py_UCS1)PyBytes_AS_STRING(op)[0]);
+            assert(*target >= (PyObject *)BS);
+            assert(*target < (PyObject *)(BS + 1));
 #undef BS
             goto _return;
         }

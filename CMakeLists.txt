@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.20)
 project(pycds)
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-function-declaration")
+if (MSVC)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /we4013")
+else ()
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=implicit-function-declaration")
+endif ()
 
 # Only for IDE linting, skbuild will handle wheel dependencies.
 if (NOT SKBUILD)

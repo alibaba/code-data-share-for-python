@@ -133,16 +133,25 @@ fail:
 }
 
 void
+close_archive(fd_type *file)
+{
+#if IS_POSIX
+    close(*file);
+    *file = 0;
+#elif IS_WINDOWS
+    CloseHandle(*file);
+    *file = 0;
+#endif
+}
+
+void
 finalize_map(fd_type *file, size_t size, void *addr)
 {
 #if IS_POSIX
     ftruncate(*file, size);
-    close(*file);
-    *file = 0;
 #elif IS_WINDOWS
     UnmapViewOfFile(addr);
     truncate_fd(*file, size);
-    CloseHandle(*file);
-    *file = 0;
 #endif
+    close_archive(file);
 }

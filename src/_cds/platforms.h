@@ -17,6 +17,8 @@
 
 #include <sys/fcntl.h>
 #include <sys/mman.h>
+#include <stdarg.h>
+#include <printf.h>
 #include <unistd.h>
 
 #elif IS_WINDOWS
@@ -50,6 +52,9 @@ struct CDSArchiveHeader;
 struct CDSArchiveHeader *
 open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header,
              size_t header_size);
+
+void
+close_archive(fd_type *fd);
 
 void *
 map_archive(fd_type file, size_t size, void *addr);

@@ -146,8 +146,6 @@ PyCDS_AllocatorRealloc(void *, void *, size_t);
 void
 PyCDS_AllocatorFree(void *, void *);
 
-PyAPI_DATA(struct CDSStatus) cds_status;
-
 PyMODINIT_FUNC
 PyInit__cds(void);
 
