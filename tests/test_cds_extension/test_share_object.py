@@ -49,7 +49,7 @@ class ShareObjectTestMixin(CdsTestMixin):
             'print(repr(_cds._get_obj()))',
             PYCDSMODE='MANUALLY',
         )
-        self.assertEqual(oracle, out.out.decode().strip())
+        self.assertEqual(oracle, out.out.decode(encoding='utf-8').strip())
 
         if is_a is not None:
             out = self.assert_python_source_ok(
