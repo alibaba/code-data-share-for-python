@@ -3,8 +3,6 @@
 
 #include <Python.h>
 
-#define Py_BUILD_CORE
-
 // immortal & static objects
 #if PY_MINOR_VERSION >= 12
 #include <internal/pycore_long.h>
@@ -25,8 +23,6 @@
 #else
 #include <objimpl.h>
 #endif
-
-#undef Py_BUILD_CORE
 
 #if PY_MINOR_VERSION < 8
 #error Requires CPython 3.8+.

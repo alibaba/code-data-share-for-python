@@ -19,9 +19,7 @@
 #endif
 
 #if IS_HASHTABLE && CPYTHON_HASHTABLE
-#define Py_BUILD_CORE
 #include <internal/pycore_hashtable.h>
-#undef Py_BUILD_CORE
 typedef struct _table {
     _Py_hashtable_t *pyHashtable;
 } table;
