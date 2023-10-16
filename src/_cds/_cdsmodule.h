@@ -40,7 +40,12 @@
 #include "pythoncapi_compat.h"
 
 #define CDS_MAX_IMG_SIZE (1024 * 1024 * 1024)
-#define CDS_REQUESTING_ADDR ((void *)0x280000000L)
+
+#if IS_POSIX
+#define CDS_REQUESTING_ADDR ((void *)0x580000000L)
+#elif IS_WINDOWS
+#define CDS_REQUESTING_ADDR ((void *)0x580000000L)
+#endif
 
 #define FAST_PATCH
 
