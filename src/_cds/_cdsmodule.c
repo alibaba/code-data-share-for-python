@@ -345,7 +345,7 @@ PyCDS_LoadArchive(const char *archive)
     struct CDSArchiveHeader *header = read_header_from_archive(
         cds_status.archive, &cds_status.archive_fd, &h, sizeof(h));
     if (header == NULL) {
-        if (cds_status.archive_fd == NULL) {
+        if ((ptype)cds_status.archive_fd == NULL) {
             PyErr_SetString(CDSException, "open mmap file failed.");
         }
         else {

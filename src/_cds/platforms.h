@@ -17,6 +17,7 @@
 
 #include <printf.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
