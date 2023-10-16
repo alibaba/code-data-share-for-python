@@ -96,6 +96,7 @@ read_header_from_archive(const char *archive, fd_type *fd,
     *fd = CreateFile(archive, GENERIC_READ, 0, NULL, OPEN_EXISTING,
                      FILE_ATTRIBUTE_NORMAL, NULL);
     if (*fd == INVALID_HANDLE_VALUE) {
+        *fd = NULL;
         goto fail;
     }
     DWORD size;
