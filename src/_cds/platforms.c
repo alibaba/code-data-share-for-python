@@ -64,12 +64,12 @@ create_map_from_archive(void *addr, size_t size, fd_type fd)
     HANDLE mapping =
         CreateFileMapping(fd, NULL, PAGE_READWRITE, 0, size, NULL);
     if (mapping == NULL) {
-        verbose("err: %p", GetLastError());
+        verbose("err1: %p", GetLastError());
         goto fail;
     }
     res = MapViewOfFileEx(mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
     if (res == NULL || res != addr) {
-        verbose("err: %p", GetLastError());
+        verbose("err2: %p", GetLastError());
         goto fail;
     }
 #endif
