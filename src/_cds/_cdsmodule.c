@@ -277,9 +277,13 @@ PyCDS_CreateArchive(const char *archive)
     ftruncate(cds_status.archive_fd, CDS_MAX_IMG_SIZE);
     void *shm =
         mmap(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE, PROT_READ | PROT_WRITE,
-             MAP_SHARED, cds_status.archive_fd, 0);
+             MAP_SHARED | MAP_FIXED, cds_status.archive_fd, 0);
     if (shm == MAP_FAILED) {
         PyErr_SetString(CDSException, "mmap failed.");
+        return NULL;
+    }
+    else if (shm != CDS_REQUESTING_ADDR) {
+        PyErr_SetString(CDSException, "unexpected mapping.");
         return NULL;
     }
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
@@ -588,7 +592,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
 
-// clang-format off
+        // clang-format off
 #if PY_MINOR_VERSION <= 12
 #if PY_MINOR_VERSION > 10
 _Py_COMP_DIAG_PUSH
