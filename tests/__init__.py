@@ -1,3 +1,4 @@
+import functools
 import logging
 import os
 import random
@@ -15,12 +16,22 @@ def assert_python_source_failure(src, **env_vars):
     return assert_python_failure('-c', src, **env_vars)
 
 
+def utf8_wrap(f):
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        if 'PYTHONUTF8' not in kwargs:
+            kwargs['PYTHONUTF8'] = '1'
+        return f(*args, **kwargs)
+
+    return inner
+
+
 class UtilMixin:
     exists = staticmethod(os.path.exists)
-    assert_python_ok = staticmethod(assert_python_ok)
-    assert_python_failure = staticmethod(assert_python_failure)
-    assert_python_source_ok = staticmethod(assert_python_source_ok)
-    assert_python_source_failure = staticmethod(assert_python_source_failure)
+    assert_python_ok = staticmethod(utf8_wrap(assert_python_ok))
+    assert_python_failure = staticmethod(utf8_wrap(assert_python_failure))
+    assert_python_source_ok = staticmethod(utf8_wrap(assert_python_source_ok))
+    assert_python_source_failure = staticmethod(utf8_wrap(assert_python_source_failure))
 
     assertExists = lambda self, file: self.assertTrue(self.exists(file), f'{file} should exists but not.')
     assertNotExists = lambda self, file: self.assertFalse(self.exists(file), f'{file} should not exists but present.')
