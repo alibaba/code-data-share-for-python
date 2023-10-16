@@ -30,11 +30,17 @@
 
 #if IS_POSIX
 typedef int fd_type;
-typedef void *ptype;
+#define P_VALUE void
+
+#define NULL_FD 0
 #elif IS_WINDOWS
 typedef HANDLE fd_type;
-typedef long long ptype;
+#define P_VALUE DWORD
+
+#define NULL_FD NULL
 #endif
+
+typedef P_VALUE *p_type;
 
 void
 verbose(const char *fmt, ...);

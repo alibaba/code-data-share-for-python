@@ -98,8 +98,9 @@ struct MoveInContext {
 #define CDS_MODE_SHARE (3)
 #define CDS_MODE_MANUALLY (-1)
 
+#define P(p) ((p_type)(p))
 #define ALIEN_TO(size, align) (((size) + ((align)-1)) & ~((align)-1))
-#define UNSHIFT(p, shift, ty) ((ty *)((ptype)(p) + (shift)))
+#define UNSHIFT(p, shift, ty) ((ty *)(P(p) + (shift)))
 
 struct CDSStatus {
     int verbose;

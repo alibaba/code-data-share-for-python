@@ -307,7 +307,7 @@ PyCDS_Malloc(size_t size)
         cds_status.archive_header->used -= size_aligned;
         return NULL;
     }
-    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, (ptype)res + size_aligned);
+    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, P(res) + size_aligned);
     return res;
 }
 
@@ -323,8 +323,8 @@ PyCDS_InHeap(void *p)
 {
     if (cds_status.archive_header) {
         if (p > cds_status.archive_header->mapped_addr &&
-            (ptype)p < (ptype)cds_status.archive_header->mapped_addr +
-                           cds_status.archive_header->used)
+            P(p) < P(cds_status.archive_header->mapped_addr) +
+                       cds_status.archive_header->used)
             return true;
     }
     return false;
@@ -345,7 +345,7 @@ PyCDS_LoadArchive(const char *archive)
     struct CDSArchiveHeader *header = read_header_from_archive(
         cds_status.archive, &cds_status.archive_fd, &h, sizeof(h));
     if (header == NULL) {
-        if ((ptype)cds_status.archive_fd == NULL) {
+        if (cds_status.archive_fd == NULL_FD) {
             PyErr_SetString(CDSException, "open mmap file failed.");
         }
         else {
@@ -382,7 +382,7 @@ PyCDS_LoadArchive(const char *archive)
 
     if (cds_status.archive_header->none_addr) {
         cds_status.shift =
-            (ptype)Py_None - (ptype)cds_status.archive_header->none_addr;
+            P(Py_None) - P(cds_status.archive_header->none_addr);
     }
     if (cds_status.archive_header->obj != NULL) {
         assert(!cds_status.traverse_error);
