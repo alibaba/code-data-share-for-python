@@ -28,8 +28,8 @@ create_archive_preallocate(const char *name, size_t size)
         truncate_fd(fd, size);
     }
 #elif IS_WINDOWS
-    fd = CreateFileA(name, GENERIC_READ | GENERIC_WRITE, 0, NULL,
-                     CREATE_ALWAYS, FILE_FLAG_NO_BUFFERING, NULL);
+    fd = CreateFile(name, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
+                    FILE_FLAG_NO_BUFFERING, NULL);
     if (fd != INVALID_HANDLE_VALUE) {
         truncate_fd(fd, size);
     }
@@ -61,17 +61,15 @@ create_map_from_archive(void *addr, size_t size, fd_type fd)
         goto fail;
     }
 #elif IS_WINDOWS
-    HANDLE mapping = CreateFileMappingA(fd, NULL, PAGE_READWRITE | SEC_COMMIT,
-                                        0, size, NULL);
+    HANDLE mapping =
+        CreateFileMapping(fd, NULL, PAGE_READWRITE, 0, size, NULL);
     if (mapping == NULL) {
         verbose("err: %p", GetLastError());
-    }
-    if (mapping == NULL) {
         goto fail;
     }
     res = MapViewOfFileEx(mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
-    verbose("windows file fd: %p", (ptype)res);
-    if (res == NULL) {
+    if (res == NULL || res != addr) {
+        verbose("err: %p", GetLastError());
         goto fail;
     }
 #endif
@@ -81,8 +79,8 @@ fail:
 }
 
 struct CDSArchiveHeader *
-open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header,
-             size_t header_size)
+read_header_from_archive(const char *archive, fd_type *fd,
+                         struct CDSArchiveHeader *header, size_t header_size)
 {
 #if IS_POSIX
     *fd = open(archive, O_RDWR);
@@ -95,21 +93,18 @@ open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header,
     }
     return header;
 #elif IS_WINDOWS
-    *fd = CreateFileA(archive, GENERIC_READ, 0, NULL, OPEN_EXISTING,
-                      FILE_ATTRIBUTE_NORMAL, NULL);
+    *fd = CreateFile(archive, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+                     FILE_ATTRIBUTE_NORMAL, NULL);
     if (*fd == INVALID_HANDLE_VALUE) {
         goto fail;
     }
     DWORD size;
-    if (!ReadFile(*fd, &header, header_size, &size, NULL) ||
+    if (!ReadFile(*fd, header, header_size, &size, NULL) ||
         size != header_size) {
-        goto fail_close_file;
+        CloseHandle(fd);
+        goto fail;
     }
     return header;
-#endif
-fail_close_file:
-#if IS_POSIX
-#elif IS_WINDOWS
 #endif
 fail:
     return NULL;
@@ -126,7 +121,19 @@ map_archive(fd_type file, size_t size, void *addr)
     }
     return shm;
 #elif IS_WINDOWS
-
+    HANDLE mapping =
+        CreateFileMapping(file, NULL, PAGE_READONLY, 0, size, NULL);
+    if (mapping == NULL) {
+        verbose("err1: %p", GetLastError());
+        goto fail;
+    }
+    ptype *shm = MapViewOfFileEx(mapping, FILE_MAP_COPY, 0, 0, 0, addr);
+    if (shm == NULL) {
+        verbose("err2: %p, %p, %p", GetLastError(), mapping, addr);
+        CloseHandle(mapping);
+        goto fail;
+    }
+    return shm;
 #endif
 fail:
     return NULL;

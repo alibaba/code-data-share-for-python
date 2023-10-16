@@ -15,10 +15,10 @@
 
 #if IS_POSIX
 
+#include <printf.h>
+#include <stdarg.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
-#include <stdarg.h>
-#include <printf.h>
 #include <unistd.h>
 
 #elif IS_WINDOWS
@@ -50,8 +50,8 @@ create_map_from_archive(void *addr, size_t size, fd_type fd);
 struct CDSArchiveHeader;
 
 struct CDSArchiveHeader *
-open_archive(const char *archive, fd_type *fd, struct CDSArchiveHeader *header,
-             size_t header_size);
+read_header_from_archive(const char *archive, fd_type *fd,
+                         struct CDSArchiveHeader *header, size_t header_size);
 
 void
 close_archive(fd_type *fd);

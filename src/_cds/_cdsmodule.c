@@ -339,7 +339,7 @@ PyCDS_LoadArchive(const char *archive)
 
     cds_status.archive = archive;
     struct CDSArchiveHeader h;
-    struct CDSArchiveHeader *header = open_archive(
+    struct CDSArchiveHeader *header = read_header_from_archive(
         cds_status.archive, &cds_status.archive_fd, &h, sizeof(h));
     if (header == NULL) {
         if (cds_status.archive_fd == NULL) {
@@ -348,6 +348,11 @@ PyCDS_LoadArchive(const char *archive)
         else {
             PyErr_SetString(CDSException, "read archive header failed.");
         }
+        goto fail;
+    }
+
+    if (CDS_REQUESTING_ADDR != h.mapped_addr) {
+        PyErr_SetString(CDSException, "Archive address changed.");
         goto fail;
     }
 
@@ -579,7 +584,7 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
 
         (void)PyObject_INIT_VAR(res, &PyBytes_Type, size);
 
-// clang-format off
+        // clang-format off
 #if PY_MINOR_VERSION <= 12
 #if PY_MINOR_VERSION > 10
 _Py_COMP_DIAG_PUSH
