@@ -273,6 +273,10 @@ PyCDS_CreateArchive(const char *archive)
         PyErr_SetString(CDSException, "mmap failed during dump.");
         return NULL;
     }
+    else if (shm != CDS_REQUESTING_ADDR) {
+        PyErr_SetString(CDSException, "unexpected mapping.");
+        return NULL;
+    }
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
     cds_status.archive_header->mapped_addr = shm;
     cds_status.archive_header->none_addr = Py_None;
@@ -314,7 +318,6 @@ PyCDS_Free(void *p)
     assert(PyCDS_InHeap(p));
     PyCDS_Verbose(2, "Free: %p", p);
 }
-
 bool
 PyCDS_InHeap(void *p)
 {
