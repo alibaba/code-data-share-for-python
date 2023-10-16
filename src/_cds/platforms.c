@@ -128,7 +128,7 @@ map_archive(fd_type file, size_t size, void *addr)
         verbose("err1: %p", GetLastError());
         goto fail;
     }
-    ptype *shm = MapViewOfFileEx(mapping, FILE_MAP_COPY, 0, 0, 0, addr);
+    p_type *shm = MapViewOfFileEx(mapping, FILE_MAP_COPY, 0, 0, 0, addr);
     if (shm == NULL) {
         verbose("err2: %p, %p, %p", GetLastError(), mapping, addr);
         CloseHandle(mapping);
