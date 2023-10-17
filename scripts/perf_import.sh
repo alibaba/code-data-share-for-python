@@ -12,9 +12,4 @@ pyperf compare_to perf-import-3.8-raw.json perf-import-3.8-cds.json --table | te
 pyperf compare_to perf-import-3.9-raw.json perf-import-3.9-cds.json --table | tee perf-import-3.9.table
 pyperf compare_to perf-import-3.10-raw.json perf-import-3.10-cds.json --table | tee perf-import-3.10.table
 pyperf compare_to perf-import-3.11-raw.json perf-import-3.11-cds.json --table | tee perf-import-3.11.table
-pyperf compare_to \
-  perf-import-3.8-raw.json perf-import-3.8-cds.json \
-  perf-import-3.9-raw.json perf-import-3.9-cds.json \
-  perf-import-3.10-raw.json perf-import-3.10-cds.json \
-  perf-import-3.11-raw.json perf-import-3.11-cds.json \
-  --table | tee perf-import.table
+pyperf compare_to perf-import-3.12-raw.json perf-import-3.12-cds.json --table | tee perf-import-3.12.table
