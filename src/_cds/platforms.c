@@ -90,7 +90,8 @@ create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status)
 {
     void *res;
 #if IS_POSIX
-    res = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    res = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+               cds_status.archive_fd, 0);
     if (res == MAP_FAILED || res != addr) {
         goto fail;
     }
@@ -150,8 +151,9 @@ void *
 map_archive(struct CDSStatus cds_status, size_t size, void *addr)
 {
 #if IS_POSIX
-    void *shm = mmap(addr, size, PROT_READ | PROT_WRITE,
-                     MAP_PRIVATE | MAP_FIXED | M_POPULATE, file, 0);
+    void *shm =
+        mmap(addr, size, PROT_READ | PROT_WRITE,
+             MAP_PRIVATE | MAP_FIXED | M_POPULATE, cds_status.archive_fd, 0);
     if (shm == MAP_FAILED) {
         goto fail;
     }
