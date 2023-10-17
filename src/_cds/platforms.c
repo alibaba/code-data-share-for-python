@@ -90,9 +90,9 @@ create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status)
 {
     void *res;
 #if IS_POSIX
-    res = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_SHARED,
+    res = mmap(addr, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_FIXED,
                cds_status.archive_fd, 0);
-    if (res == MAP_FAILED || res != addr) {
+    if (res == MAP_FAILED) {
         goto fail;
     }
 #elif IS_WINDOWS

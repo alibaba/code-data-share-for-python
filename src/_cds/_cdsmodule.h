@@ -39,9 +39,7 @@
 #endif
 
 #define CDS_MAX_IMG_SIZE (1024 * 1024 * 1024)
-// If not specified, Windows usually maps memory to 100GB - 300GB,
-// within ~2GB is likely to cause conflict
-#define CDS_REQUESTING_ADDR ((void *)0x2800000000L)
+#define CDS_REQUESTING_ADDR ((void *)0x0000280000000000L)
 
 #define FAST_PATCH
 
