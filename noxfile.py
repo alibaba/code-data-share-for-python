@@ -17,8 +17,20 @@ OS = platform.system()
 RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
-DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
+GA = os.environ.get('GITHUB_ACTIONS') == 'true'
+
 CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
+
+
+def _clean_nox():
+    from nox.virtualenv import shutil
+
+    shutil.rmtree(os.path.join(PYCDS_ROOT, '.nox'))
+
+
+def ci_session_cleanup():
+    if OS == 'Windows' and GA:
+        _clean_nox()
 
 
 def _py_version(session: nox.Session):
@@ -93,7 +105,7 @@ PACKAGES = (
     Package('pyparsing'),
     Package('sqlalchemy'),
     Package('werkzeug'),
-    Package('aiohttp'),
+    Package('aiohttp', skip=lambda _py: _py in ('3.12',)),
     Package('google-cloud-storage', module='google.cloud.storage'),
     Package('flask'),
     Package('azure-core', module='azure.core'),
@@ -136,6 +148,8 @@ for py in SUPPORTED_PYTHONS:
         session.run('python', '-c', f'import cds.dump; cds.dump.run_dump({repr(lst)}, {repr(img)})')
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
+        ci_session_cleanup()
+
 
     @nox.session(name=f'test_import_third_party_perf-{py}', tags=['test_import_third_party_perf'], python=py)
     @nox.parametrize('package', [package for package in PACKAGES if not package.should_skip(py)])
@@ -172,6 +186,8 @@ for py in SUPPORTED_PYTHONS:
                     '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
                     'python', '-c', package.import_stmt,
                     env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
+
+        ci_session_cleanup()
 
 
 def _pyperformance(session: nox.Session, pyperformance_args=None):

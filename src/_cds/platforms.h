@@ -14,16 +14,15 @@
 #include <stddef.h>
 
 #if IS_POSIX
-
 #include <printf.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
 #elif IS_WINDOWS
 #include <fileapi.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <tchar.h>
 #endif

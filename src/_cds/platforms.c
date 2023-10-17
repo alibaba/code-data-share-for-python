@@ -64,12 +64,10 @@ create_map_from_archive(void *addr, size_t size, fd_type fd)
     HANDLE mapping =
         CreateFileMapping(fd, NULL, PAGE_READWRITE, 0, size, NULL);
     if (mapping == NULL) {
-        verbose("err1: %p", GetLastError());
         goto fail;
     }
     res = MapViewOfFileEx(mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
     if (res == NULL || res != addr) {
-        verbose("err2: %p", GetLastError());
         goto fail;
     }
 #endif
@@ -111,6 +109,36 @@ fail:
     return NULL;
 }
 
+inline void
+debug_windows_err(LPCVOID lpAddress, DWORD size)
+{
+    if (GetLastError() != ERROR_INVALID_ADDRESS) {
+        verbose("unhandled error");
+    }
+
+    LPCVOID lpEndAddress = (LPCVOID)((DWORD_PTR)lpAddress + size);
+
+    MEMORY_BASIC_INFORMATION mbi = {};
+    bool canBeMapped = true;
+
+    while ((DWORD_PTR)lpAddress < (DWORD_PTR)lpEndAddress) {
+        if (VirtualQuery(lpAddress, &mbi, sizeof(mbi)) == 0) {
+            verbose("VirtualQuery failed with error: %p", GetLastError());
+            return;
+        }
+
+        if (mbi.State != MEM_FREE) {
+            canBeMapped = false;
+            verbose(
+                "Address range starting from %p of size %ld bytes is not "
+                "free. State: %d",
+                GetLastError(), mbi.RegionSize, mbi.State);
+        }
+
+        lpAddress = (LPCVOID)((DWORD_PTR)mbi.BaseAddress + mbi.RegionSize);
+    }
+}
+
 void *
 map_archive(fd_type file, size_t size, void *addr)
 {
@@ -125,12 +153,11 @@ map_archive(fd_type file, size_t size, void *addr)
     HANDLE mapping =
         CreateFileMapping(file, NULL, PAGE_READONLY, 0, size, NULL);
     if (mapping == NULL) {
-        verbose("err1: %p", GetLastError());
         goto fail;
     }
     p_type *shm = MapViewOfFileEx(mapping, FILE_MAP_COPY, 0, 0, 0, addr);
     if (shm == NULL) {
-        verbose("err2: %p, %p, %p", GetLastError(), mapping, addr);
+        debug_windows_err(addr, size);
         CloseHandle(mapping);
         goto fail;
     }
