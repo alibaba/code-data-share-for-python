@@ -133,7 +133,7 @@ for py in SUPPORTED_PYTHONS:
         img = os.path.join(tmp, 'test.img')
 
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst})
-        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")')
+        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump({repr(lst)}, {repr(img)})')
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
 
@@ -159,7 +159,7 @@ for py in SUPPORTED_PYTHONS:
 
         logger.info(f'start generating CDS archive for {package.name}')
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst}, log=False)
-        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")', log=False)
+        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump({repr(lst)}, {repr(img)})', log=False)
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
         logger.info(f'finish generating CDS archive for {package.name}')
 
