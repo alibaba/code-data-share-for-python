@@ -77,7 +77,7 @@ debug_windows_err(LPCVOID lpAddress, DWORD size)
             verbose(
                 "Address range starting from %p of size %ld bytes is not "
                 "free. State: %d",
-                GetLastError(), mbi.RegionSize, mbi.State);
+                lpAddress, mbi.RegionSize, mbi.State);
         }
 
         lpAddress = (LPCVOID)((DWORD_PTR)mbi.BaseAddress + mbi.RegionSize);

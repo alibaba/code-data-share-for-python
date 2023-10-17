@@ -363,8 +363,7 @@ PyCDS_LoadArchive(const char *archive)
     }
 
     size_t aligned_size = ALIEN_TO(h.used, 4096);
-    void *shm =
-        map_archive(cds_status, aligned_size, h.mapped_addr);
+    void *shm = map_archive(cds_status, aligned_size, h.mapped_addr);
     if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
         goto fail;
