@@ -7,23 +7,21 @@
 #elif defined(_WIN32) || defined(WIN32)
 #define IS_POSIX 0
 #define IS_WINDOWS 1
-// include windows.h before other Windows-specific headers
 #include <windows.h>
 #endif
 
 #include <stddef.h>
+#include <stdio.h>
 
 #if IS_POSIX
 #include <printf.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #elif IS_WINDOWS
 #include <fileapi.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <tchar.h>
 #endif
 
@@ -67,5 +65,4 @@ map_archive(fd_type file, size_t size, void *addr);
 
 void
 finalize_map(fd_type *file, size_t size, void *addr);
-
 #endif

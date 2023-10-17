@@ -265,17 +265,17 @@ PyCDS_CreateArchive(const char *archive)
         create_archive_preallocate(archive, CDS_MAX_IMG_SIZE);
     if (cds_status.archive_fd <= 0) {
         PyErr_SetString(CDSException, "create mmap file failed.");
-        return NULL;
+        goto fail;
     }
     void *shm = create_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
                                         cds_status.archive_fd);
     if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed during dump.");
-        return NULL;
+        goto fail;
     }
     else if (shm != CDS_REQUESTING_ADDR) {
         PyErr_SetString(CDSException, "unexpected mapping.");
-        return NULL;
+        goto fail;
     }
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
     cds_status.archive_header->mapped_addr = shm;
@@ -287,6 +287,9 @@ PyCDS_CreateArchive(const char *archive)
         ALIEN_TO(sizeof(struct CDSArchiveHeader), 8);
     cds_status.archive_header->all_string_ref = NULL;
     return shm;
+fail:
+    close_archive(&cds_status.archive_fd);
+    return NULL;
 }
 
 void *
