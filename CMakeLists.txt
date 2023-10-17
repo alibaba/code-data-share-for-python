@@ -15,7 +15,7 @@ endif ()
 
 find_package(Python 3.8 REQUIRED COMPONENTS Interpreter Development.Module)
 
-add_compile_definitions(Py_BUILD_CORE Py_BUILD_CORE_MODULE)  # for _PyOpcode_Caches and _PyOpcode_Deopt
+add_compile_definitions(Py_BUILD_CORE Py_BUILD_CORE_MODULE)  # for sizeof(PyGC_Head)
 add_compile_definitions(NEED_OPCODE_TABLES)  # for _PyOpcode_Caches and _PyOpcode_Deopt
 
 python_add_library(_cds MODULE WITH_SOABI src/_cds/_cdsmodule.c src/_cds/lookup_table.c src/_cds/hashtable.c src/_cds/platforms.c)
