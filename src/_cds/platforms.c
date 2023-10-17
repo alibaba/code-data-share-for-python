@@ -193,13 +193,14 @@ close_archive(fd_type *file)
 }
 
 void
-finalize_map(fd_type *file, size_t size, void *addr)
+finalize_map(struct CDSStatus cds_status, size_t size, void *addr)
 {
 #if IS_POSIX
-    ftruncate(*file, size);
+    ftruncate(cds_status.archive_fd, size);
 #elif IS_WINDOWS
     UnmapViewOfFile(addr);
-    truncate_fd(*file, size);
+    CloseHandle(cds_status.mapping);
+    truncate_fd(cds_status.archive_fd, size);
 #endif
-    close_archive(file);
+    close_archive(&cds_status.archive_fd);
 }

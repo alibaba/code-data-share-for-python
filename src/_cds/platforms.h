@@ -66,5 +66,5 @@ void *
 map_archive(struct CDSStatus cds_status, size_t size, void *addr);
 
 void
-finalize_map(fd_type *file, size_t size, void *addr);
+finalize_map(struct CDSStatus cds_status, size_t size, void *addr);
 #endif

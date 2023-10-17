@@ -169,7 +169,7 @@ _cds__move_in_impl(PyObject *module, PyObject *obj)
 
     PyCDS_FinalizeMoveIn();
 
-    finalize_map(&cds_status.archive_fd, cds_status.archive_header->used,
+    finalize_map(cds_status, cds_status.archive_header->used,
                  cds_status.archive_header);
 
     if (cds_status.traverse_error) {
