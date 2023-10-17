@@ -2,12 +2,6 @@
 
 #include "_cdscontext.h"
 
-#ifdef MAP_POPULATE
-#define M_POPULATE MAP_POPULATE
-#else
-#define M_POPULATE 0
-#endif
-
 void
 verbose(const char *fmt, ...)
 {
@@ -196,6 +190,7 @@ void
 finalize_map(struct CDSStatus cds_status, size_t size, void *addr)
 {
 #if IS_POSIX
+    munmap(addr, size);
     ftruncate(cds_status.archive_fd, size);
 #elif IS_WINDOWS
     UnmapViewOfFile(addr);

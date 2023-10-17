@@ -30,6 +30,12 @@ typedef int fd_type;
 #define P_VALUE void
 
 #define NULL_FD 0
+
+#ifdef MAP_POPULATE
+#define M_POPULATE MAP_POPULATE
+#else
+#define M_POPULATE 0
+#endif
 #elif IS_WINDOWS
 typedef HANDLE fd_type;
 #define P_VALUE DWORD
