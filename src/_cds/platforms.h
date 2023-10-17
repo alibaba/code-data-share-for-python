@@ -39,6 +39,8 @@ typedef HANDLE fd_type;
 
 typedef P_VALUE *p_type;
 
+struct CDSStatus;
+
 void
 verbose(const char *fmt, ...);
 
@@ -49,7 +51,7 @@ void
 truncate_fd(fd_type fd, size_t size);
 
 void *
-create_map_from_archive(void *addr, size_t size, fd_type fd);
+create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status);
 
 struct CDSArchiveHeader;
 
@@ -61,7 +63,7 @@ void
 close_archive(fd_type *fd);
 
 void *
-map_archive(fd_type file, size_t size, void *addr);
+map_archive(struct CDSStatus cds_status, size_t size, void *addr);
 
 void
 finalize_map(fd_type *file, size_t size, void *addr);

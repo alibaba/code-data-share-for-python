@@ -1,5 +1,7 @@
 #include "platforms.h"
 
+#include "_cdscontext.h"
+
 #ifdef MAP_POPULATE
 #define M_POPULATE MAP_POPULATE
 #else
@@ -84,7 +86,7 @@ debug_windows_err(LPCVOID lpAddress, DWORD size)
 #endif
 
 void *
-create_map_from_archive(void *addr, size_t size, fd_type fd)
+create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status)
 {
     void *res;
 #if IS_POSIX
@@ -93,16 +95,16 @@ create_map_from_archive(void *addr, size_t size, fd_type fd)
         goto fail;
     }
 #elif IS_WINDOWS
-    HANDLE mapping =
-        CreateFileMapping(fd, NULL, PAGE_READWRITE, 0, size, NULL);
-    if (mapping == NULL) {
+    cds_status.mapping = CreateFileMapping(cds_status.archive_fd, NULL,
+                                           PAGE_READWRITE, 0, size, NULL);
+    if (cds_status.mapping == NULL) {
         verbose("mapping from new archive failed: %p", GetLastError());
         goto fail;
     }
-    res = MapViewOfFileEx(mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
+    res = MapViewOfFileEx(cds_status.mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
     if (res == NULL || res != addr) {
         debug_windows_err(addr, size);
-        CloseHandle(mapping);
+        CloseHandle(cds_status.mapping);
         goto fail;
     }
 #endif
@@ -145,7 +147,7 @@ fail:
 }
 
 void *
-map_archive(fd_type file, size_t size, void *addr)
+map_archive(struct CDSStatus cds_status, size_t size, void *addr)
 {
 #if IS_POSIX
     void *shm = mmap(addr, size, PROT_READ | PROT_WRITE,
@@ -155,16 +157,17 @@ map_archive(fd_type file, size_t size, void *addr)
     }
     return shm;
 #elif IS_WINDOWS
-    HANDLE mapping =
-        CreateFileMapping(file, NULL, PAGE_READONLY, 0, size, NULL);
-    if (mapping == NULL) {
+    cds_status.mapping = CreateFileMapping(cds_status.archive_fd, NULL,
+                                           PAGE_READONLY, 0, size, NULL);
+    if (cds_status.mapping == NULL) {
         verbose("load mapping from archive failed: %p", GetLastError());
         goto fail;
     }
-    p_type *shm = MapViewOfFileEx(mapping, FILE_MAP_COPY, 0, 0, 0, addr);
+    p_type *shm =
+        MapViewOfFileEx(cds_status.mapping, FILE_MAP_COPY, 0, 0, 0, addr);
     if (shm == NULL) {
         debug_windows_err(addr, size);
-        CloseHandle(mapping);
+        CloseHandle(cds_status.mapping);
         goto fail;
     }
     return shm;

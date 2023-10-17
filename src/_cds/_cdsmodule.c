@@ -268,7 +268,7 @@ PyCDS_CreateArchive(const char *archive)
         goto fail;
     }
     void *shm = create_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
-                                        cds_status.archive_fd);
+                                        cds_status);
     if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed during dump.");
         goto fail;
@@ -364,7 +364,7 @@ PyCDS_LoadArchive(const char *archive)
 
     size_t aligned_size = ALIEN_TO(h.used, 4096);
     void *shm =
-        map_archive(cds_status.archive_fd, aligned_size, h.mapped_addr);
+        map_archive(cds_status, aligned_size, h.mapped_addr);
     if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
         goto fail;

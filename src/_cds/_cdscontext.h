@@ -2,6 +2,7 @@
 #define PYCDS__CDSCONTEXT_H
 
 #include <Python.h>
+#include <stdbool.h>
 
 #include "lookup_table.h"
 #include "platforms.h"
