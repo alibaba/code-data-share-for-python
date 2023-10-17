@@ -109,6 +109,7 @@ fail:
     return NULL;
 }
 
+#if IS_WINDOWS
 inline void
 debug_windows_err(LPCVOID lpAddress, DWORD size)
 {
@@ -118,7 +119,7 @@ debug_windows_err(LPCVOID lpAddress, DWORD size)
 
     LPCVOID lpEndAddress = (LPCVOID)((DWORD_PTR)lpAddress + size);
 
-    MEMORY_BASIC_INFORMATION mbi = {};
+    MEMORY_BASIC_INFORMATION mbi;
     bool canBeMapped = true;
 
     while ((DWORD_PTR)lpAddress < (DWORD_PTR)lpEndAddress) {
@@ -138,6 +139,7 @@ debug_windows_err(LPCVOID lpAddress, DWORD size)
         lpAddress = (LPCVOID)((DWORD_PTR)mbi.BaseAddress + mbi.RegionSize);
     }
 }
+#endif
 
 void *
 map_archive(fd_type file, size_t size, void *addr)
