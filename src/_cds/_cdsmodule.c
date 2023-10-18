@@ -9,35 +9,35 @@ module _cds
 
 // clang-format off
 static PyMethodDef CDSMethods[] = {
-        _CDS__CREATE_ARCHIVE_METHODDEF
-        _CDS__LOAD_ARCHIVE_METHODDEF
-        _CDS__MOVE_IN_METHODDEF
-        _CDS__GET_OBJ_METHODDEF
-        _CDS__SET_MODE_METHODDEF
-        _CDS__GET_INITIALIZED_METHODDEF
-        _CDS__SET_VERBOSE_METHODDEF
-        {NULL, NULL, 0, NULL},
+    _CDS__CREATE_ARCHIVE_METHODDEF
+    _CDS__LOAD_ARCHIVE_METHODDEF
+    _CDS__MOVE_IN_METHODDEF
+    _CDS__GET_OBJ_METHODDEF
+    _CDS__SET_MODE_METHODDEF
+    _CDS__GET_INITIALIZED_METHODDEF
+    _CDS__SET_VERBOSE_METHODDEF
+    {NULL, NULL, 0, NULL},
 };
 
 static struct PyModuleDef _cdsmodule = {
-        PyModuleDef_HEAD_INIT,
-        "_cds",
-        NULL,
-        -1,
-        CDSMethods
+    PyModuleDef_HEAD_INIT,
+    "_cds",
+    NULL,
+    -1,
+    CDSMethods
 };
 
 static PyStructSequence_Field flags_fields[] = {
-        {"mode",    "PYCDSMODE"},
-        {"verbose", "PYCDSVERBOSE"},
-        {0}
+    {"mode",                "PYCDSMODE"},
+    {"verbose",             "PYCDSVERBOSE"},
+    {0}
 };
 
 static PyStructSequence_Desc flags_desc = {
-        "_cds.flags",
-        NULL,
-        flags_fields,
-        2
+    "_cds.flags",
+    NULL,
+    flags_fields,
+    2
 };
 
 // todo: not implemented yet

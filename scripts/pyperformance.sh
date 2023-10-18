@@ -16,4 +16,10 @@ pyperf compare_to pyperformance-3.8-raw.json pyperformance-3.8-cds-site.json pyp
 pyperf compare_to pyperformance-3.9-raw.json pyperformance-3.9-cds-site.json pyperformance-3.9-cds.json --table | tee pyperformance-3.9.table
 pyperf compare_to pyperformance-3.10-raw.json pyperformance-3.10-cds-site.json pyperformance-3.10-cds.json --table | tee pyperformance-3.10.table
 pyperf compare_to pyperformance-3.11-raw.json pyperformance-3.11-cds-site.json pyperformance-3.11-cds.json --table | tee pyperformance-3.11.table
-pyperf compare_to pyperformance-3.12-raw.json pyperformance-3.12-cds-site.json pyperformance-3.12-cds.json --table | tee pyperformance-3.12.table
+
+pyperf compare_to \
+  pyperformance-3.8-raw.json pyperformance-3.8-cds-site.json pyperformance-3.8-cds.json \
+  pyperformance-3.9-raw.json pyperformance-3.9-cds-site.json pyperformance-3.9-cds.json \
+  pyperformance-3.10-raw.json pyperformance-3.10-cds-site.json pyperformance-3.10-cds.json \
+  pyperformance-3.11-raw.json pyperformance-3.11-cds-site.json pyperformance-3.11-cds.json \
+  --table | tee pyperformance.table

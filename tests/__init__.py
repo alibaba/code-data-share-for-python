@@ -75,7 +75,7 @@ def random_float():
 def is_shared(address: t.Union[str, int]):
     if isinstance(address, int):
         address = hex(address)
-    return address.startswith('0x28')
+    return len(address) == len('0x280000000000') and address.startswith('0x28')
 
 
 logging.getLogger().setLevel(logging.DEBUG)
