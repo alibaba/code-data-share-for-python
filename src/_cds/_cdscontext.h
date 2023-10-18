@@ -55,7 +55,7 @@ struct CDSStatus {
     const char *archive;
     fd_type archive_fd;
 #if IS_WINDOWS
-    HANDLE mapping;
+    fd_type mapping;
 #endif
 
     struct CDSArchiveHeader *archive_header;
