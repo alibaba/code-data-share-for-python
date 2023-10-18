@@ -52,39 +52,6 @@ truncate_fd(fd_type fd, size_t size)
     SetEndOfFile(fd);
 #endif
 }
-
-#if IS_WINDOWS
-inline void
-debug_windows_err(LPCVOID lpAddress, DWORD size)
-{
-    if (GetLastError() != ERROR_INVALID_ADDRESS) {
-        verbose("unhandled error");
-    }
-
-    LPCVOID lpEndAddress = (LPCVOID)((DWORD_PTR)lpAddress + size);
-
-    MEMORY_BASIC_INFORMATION mbi;
-    bool canBeMapped = true;
-
-    while ((DWORD_PTR)lpAddress < (DWORD_PTR)lpEndAddress) {
-        if (VirtualQuery(lpAddress, &mbi, sizeof(mbi)) == 0) {
-            verbose("VirtualQuery failed with error: %p", GetLastError());
-            return;
-        }
-
-        if (mbi.State != MEM_FREE) {
-            canBeMapped = false;
-            verbose(
-                "Address range starting from %p of size %ld bytes is not "
-                "free. State: %d",
-                lpAddress, mbi.RegionSize, mbi.State);
-        }
-
-        lpAddress = (LPCVOID)((DWORD_PTR)mbi.BaseAddress + mbi.RegionSize);
-    }
-}
-#endif
-
 void *
 create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status)
 {
@@ -104,7 +71,6 @@ create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status)
     }
     res = MapViewOfFileEx(cds_status.mapping, FILE_MAP_WRITE, 0, 0, 0, addr);
     if (res == NULL || res != addr) {
-        debug_windows_err(addr, size);
         CloseHandle(cds_status.mapping);
         goto fail;
     }
@@ -168,7 +134,6 @@ map_archive(struct CDSStatus cds_status, size_t size, void *addr)
     p_type *shm =
         MapViewOfFileEx(cds_status.mapping, FILE_MAP_COPY, 0, 0, 0, addr);
     if (shm == NULL) {
-        debug_windows_err(addr, size);
         CloseHandle(cds_status.mapping);
         goto fail;
     }
