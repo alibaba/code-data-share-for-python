@@ -25,7 +25,7 @@ CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
 def _clean_nox():
     from nox.virtualenv import shutil
 
-    shutil.rmtree(os.path.join(PYCDS_ROOT, '.nox'))
+    shutil.rmtree(os.path.join(PYCDS_ROOT, '.nox'), ignore_errors=True)
 
 
 def ci_session_cleanup():

@@ -46,6 +46,7 @@ truncate_fd(fd_type fd, size_t size)
     SetEndOfFile(fd);
 #endif
 }
+
 void *
 create_map_from_archive(void *addr, size_t size, struct CDSStatus cds_status)
 {
