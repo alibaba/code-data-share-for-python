@@ -11,13 +11,12 @@ from nox.virtualenv import CondaEnv
 
 nox.options.default_venv_backend = 'conda'
 
-SUPPORTED_PYTHONS = ['3.8', '3.9', '3.10', '3.11']
+SUPPORTED_PYTHONS = ['3.8', '3.9', '3.10', '3.11', '3.12']
 
 OS = platform.system()
 RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
-DISABLE_SITE_HOOK_KEY = 'DISABLE_SITE_HOOK'
 CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
 
 
@@ -93,7 +92,7 @@ PACKAGES = (
     Package('pyparsing'),
     Package('sqlalchemy'),
     Package('werkzeug'),
-    Package('aiohttp'),
+    Package('aiohttp', skip=lambda _py: _py in ('3.12',)),
     Package('google-cloud-storage', module='google.cloud.storage'),
     Package('flask'),
     Package('azure-core', module='azure.core'),
