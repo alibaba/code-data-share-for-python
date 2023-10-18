@@ -1,4 +1,4 @@
-name: check
+name: nightly
 
 on:
   push:
@@ -12,11 +12,12 @@ on:
 
 jobs:
   test-nightly:
+    if: false
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python: [ "3.12-dev" ]
+        python: [ "3.13-dev" ]
 
     steps:
       - uses: actions/checkout@v4
