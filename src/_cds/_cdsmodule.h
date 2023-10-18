@@ -3,6 +3,10 @@
 
 #include <Python.h>
 
+#include "_cdscontext.h"
+#include "platforms.h"
+#include "pythoncapi_compat.h"
+
 // immortal & static objects
 #if PY_MINOR_VERSION >= 12
 #include <internal/pycore_long.h>
@@ -28,55 +32,16 @@
 #error Requires CPython 3.8+.
 #endif
 
-#include <stdbool.h>
-
 #if PY_MINOR_VERSION >= 12
 #include "clinic/_cdsmodule.c.h"
 #else
 #include "clinic/_cdsmodule-b4-312.c.h"
 #endif
-#include "lookup_table.h"
-#include "pythoncapi_compat.h"
 
 #define CDS_MAX_IMG_SIZE (1024 * 1024 * 1024)
-#define CDS_REQUESTING_ADDR ((void *)0x280000000L)
+#define CDS_REQUESTING_ADDR ((void *)0x0000280000000000L)
 
 #define FAST_PATCH
-
-struct StringRefItem {
-    PyObject **ref;
-    struct StringRefItem *next;
-};
-
-struct StringRefList {
-    PyObject *str;
-    struct StringRefItem *refs;
-    struct StringRefList *next;
-};
-
-struct CDSArchiveHeader {
-    void *mapped_addr;
-    void *none_addr;
-    void *true_addr;
-    void *false_addr;
-    void *ellipsis_addr;
-    size_t used;
-
-    PyObject *obj;
-
-    struct StringRefList *all_string_ref;
-};
-
-struct MoveInContext {
-    int n_alloc;
-
-    table *orig_pyobject_to_in_heap_pyobject_map;
-    table *in_heap_str_to_string_ref_list_map;
-
-#if PY_MINOR_VERSION >= 12
-    PyObject *static_strings;
-#endif
-};
 
 /*
  * Internal representation of PYCDSMODE.
@@ -97,28 +62,9 @@ struct MoveInContext {
 #define CDS_MODE_SHARE (3)
 #define CDS_MODE_MANUALLY (-1)
 
+#define P(p) ((p_type)(p))
 #define ALIEN_TO(size, align) (((size) + ((align)-1)) & ~((align)-1))
-#define UNSHIFT(p, shift, ty) ((ty *)((void *)(p) + (shift)))
-
-struct CDSStatus {
-    int verbose;
-    int mode;
-
-    // Prevent re-entry of cds.init_from_env()
-    bool initialized;
-
-    long shift;
-    bool traverse_error;
-
-    const char *archive;
-    int archive_fd;
-
-    struct CDSArchiveHeader *archive_header;
-
-    PyObject *flags;
-
-    struct MoveInContext *move_in_ctx;
-};
+#define UNSHIFT(p, shift, ty) ((ty *)(P(p) + (shift)))
 
 void *PyCDS_Malloc(size_t);
 
@@ -140,8 +86,6 @@ PyCDS_AllocatorRealloc(void *, void *, size_t);
 
 void
 PyCDS_AllocatorFree(void *, void *);
-
-PyAPI_DATA(struct CDSStatus) cds_status;
 
 PyMODINIT_FUNC
 PyInit__cds(void);

@@ -17,7 +17,20 @@ OS = platform.system()
 RELEASE = platform.release()
 PYCDS_ROOT = os.path.dirname(__file__)
 
+GA = os.environ.get('GITHUB_ACTIONS') == 'true'
+
 CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
+
+
+def _clean_nox():
+    from nox.virtualenv import shutil
+
+    shutil.rmtree(os.path.join(PYCDS_ROOT, '.nox'), ignore_errors=True)
+
+
+def ci_session_cleanup():
+    if OS == 'Windows' and GA:
+        _clean_nox()
 
 
 def _py_version(session: nox.Session):
@@ -132,8 +145,10 @@ for py in SUPPORTED_PYTHONS:
         img = os.path.join(tmp, 'test.img')
 
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst})
-        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")')
+        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump({repr(lst)}, {repr(img)})')
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
+
+        ci_session_cleanup()
 
 
     @nox.session(name=f'test_import_third_party_perf-{py}', tags=['test_import_third_party_perf'], python=py)
@@ -158,7 +173,7 @@ for py in SUPPORTED_PYTHONS:
 
         logger.info(f'start generating CDS archive for {package.name}')
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'TRACE', 'PYCDSLIST': lst}, log=False)
-        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump("{lst}", "{img}")', log=False)
+        session.run('python', '-c', f'import cds.dump; cds.dump.run_dump({repr(lst)}, {repr(img)})', log=False)
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
         logger.info(f'finish generating CDS archive for {package.name}')
 
@@ -171,6 +186,8 @@ for py in SUPPORTED_PYTHONS:
                     '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
                     'python', '-c', package.import_stmt,
                     env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
+
+        ci_session_cleanup()
 
 
 def _pyperformance(session: nox.Session, pyperformance_args=None):

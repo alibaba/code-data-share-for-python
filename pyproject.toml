@@ -6,7 +6,7 @@ requires-python = ">=3.8"
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Operating System :: MacOS :: MacOS X',
-    # 'Operating System :: Microsoft :: Windows',
+    'Operating System :: Microsoft :: Windows',
     'Operating System :: POSIX :: Linux',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
@@ -32,6 +32,10 @@ skip = "*-musllinux*"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "universal2", "arm64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64", "ARM64"]
+test-skip = "*-win_arm64"
 
 [tool.scikit-build]
 wheel.packages = ["src/cds"]

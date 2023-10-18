@@ -19,7 +19,7 @@ jobs:
         # for actions/setup-python:
         # https://raw.githubusercontent.com/actions/python-versions/main/versions-manifest.json
         python: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
-        os: [ ubuntu-latest, macOS-latest ]
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
 
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-latest, macOS-latest ]
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
         conda-py: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
 
     steps:

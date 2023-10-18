@@ -1,14 +1,6 @@
 #include "_cdsmodule.h"
 
 #include <stddef.h>
-#include <sys/fcntl.h>
-#include <sys/mman.h>
-
-#ifdef MAP_POPULATE
-#define M_POPULATE MAP_POPULATE
-#else
-#define M_POPULATE 0
-#endif
 
 /*[clinic input]
 module _cds
@@ -177,9 +169,9 @@ _cds__move_in_impl(PyObject *module, PyObject *obj)
 
     PyCDS_FinalizeMoveIn();
 
-    ftruncate(cds_status.archive_fd, cds_status.archive_header->used);
-    close(cds_status.archive_fd);
-    cds_status.archive_fd = 0;
+    finalize_map(cds_status, cds_status.archive_header->used,
+                 cds_status.archive_header);
+
     if (cds_status.traverse_error) {
         return NULL;
     }
@@ -269,22 +261,21 @@ PyCDS_CreateArchive(const char *archive)
     }
 
     cds_status.archive = archive;
-    cds_status.archive_fd = open(archive, O_RDWR | O_CREAT | O_TRUNC, 0666);
-    if (cds_status.archive_fd < 0) {
+    cds_status.archive_fd =
+        create_archive_preallocate(archive, CDS_MAX_IMG_SIZE);
+    if (cds_status.archive_fd <= 0) {
         PyErr_SetString(CDSException, "create mmap file failed.");
-        return NULL;
+        goto fail;
     }
-    ftruncate(cds_status.archive_fd, CDS_MAX_IMG_SIZE);
-    void *shm =
-        mmap(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE, PROT_READ | PROT_WRITE,
-             MAP_SHARED | MAP_FIXED, cds_status.archive_fd, 0);
-    if (shm == MAP_FAILED) {
-        PyErr_SetString(CDSException, "mmap failed.");
-        return NULL;
+    void *shm = create_map_from_archive(CDS_REQUESTING_ADDR, CDS_MAX_IMG_SIZE,
+                                        cds_status);
+    if (shm == NULL) {
+        PyErr_SetString(CDSException, "mmap failed during dump.");
+        goto fail;
     }
     else if (shm != CDS_REQUESTING_ADDR) {
         PyErr_SetString(CDSException, "unexpected mapping.");
-        return NULL;
+        goto fail;
     }
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
     cds_status.archive_header->mapped_addr = shm;
@@ -296,6 +287,9 @@ PyCDS_CreateArchive(const char *archive)
         ALIEN_TO(sizeof(struct CDSArchiveHeader), 8);
     cds_status.archive_header->all_string_ref = NULL;
     return shm;
+fail:
+    close_archive(&cds_status.archive_fd);
+    return NULL;
 }
 
 void *
@@ -316,7 +310,7 @@ PyCDS_Malloc(size_t size)
         cds_status.archive_header->used -= size_aligned;
         return NULL;
     }
-    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, res + size_aligned);
+    PyCDS_Verbose(2, "Malloc: [%p, %p)", res, P(res) + size_aligned);
     return res;
 }
 
@@ -332,8 +326,8 @@ PyCDS_InHeap(void *p)
 {
     if (cds_status.archive_header) {
         if (p > cds_status.archive_header->mapped_addr &&
-            p < cds_status.archive_header->mapped_addr +
-                    cds_status.archive_header->used)
+            P(p) < P(cds_status.archive_header->mapped_addr) +
+                       cds_status.archive_header->used)
             return true;
     }
     return false;
@@ -350,24 +344,27 @@ PyCDS_LoadArchive(const char *archive)
     PyCDS_Verbose(1, "opening archive %s", archive);
 
     cds_status.archive = archive;
-    cds_status.archive_fd = open(archive, O_RDWR);
-    if (cds_status.archive_fd < 0) {
-        PyErr_SetString(CDSException, "open mmap file failed.");
-        goto fail;
-    }
-
     struct CDSArchiveHeader h;
-    if (read(cds_status.archive_fd, &h, sizeof(h)) != sizeof(h)) {
-        PyErr_SetString(CDSException, "read archive header failed.");
+    struct CDSArchiveHeader *header = read_header_from_archive(
+        cds_status.archive, &cds_status.archive_fd, &h, sizeof(h));
+    if (header == NULL) {
+        if (cds_status.archive_fd == NULL_FD) {
+            PyErr_SetString(CDSException, "open mmap file failed.");
+        }
+        else {
+            PyErr_SetString(CDSException, "read archive header failed.");
+        }
         goto fail;
     }
 
-    PyCDS_Verbose(2, "requesting %p...", h.mapped_addr);
+    if (CDS_REQUESTING_ADDR != h.mapped_addr) {
+        PyErr_SetString(CDSException, "Archive address changed.");
+        goto fail;
+    }
+
     size_t aligned_size = ALIEN_TO(h.used, 4096);
-    void *shm =
-        mmap(h.mapped_addr, aligned_size, PROT_READ | PROT_WRITE,
-             MAP_PRIVATE | MAP_FIXED | M_POPULATE, cds_status.archive_fd, 0);
-    if (shm == MAP_FAILED) {
+    void *shm = map_archive(cds_status, aligned_size, h.mapped_addr);
+    if (shm == NULL) {
         PyErr_SetString(CDSException, "mmap failed.");
         goto fail;
     }
@@ -375,9 +372,9 @@ PyCDS_LoadArchive(const char *archive)
         PyErr_SetString(CDSException, "mmap relocated.");
         goto fail;
     }
+
     cds_status.archive_header = (struct CDSArchiveHeader *)shm;
-    close(cds_status.archive_fd);
-    cds_status.archive_fd = 0;
+    close_archive(&cds_status.archive_fd);
 
 #if M_POPULATE == 0
     for (size_t i = 0; i < cds_status.archive_header->used; i += 4096) {
@@ -387,7 +384,7 @@ PyCDS_LoadArchive(const char *archive)
 
     if (cds_status.archive_header->none_addr) {
         cds_status.shift =
-            (void *)Py_None - (void *)cds_status.archive_header->none_addr;
+            P(Py_None) - P(cds_status.archive_header->none_addr);
     }
     if (cds_status.archive_header->obj != NULL) {
         assert(!cds_status.traverse_error);
@@ -454,8 +451,7 @@ PyCDS_LoadArchive(const char *archive)
     return shm;
 
 fail:
-    close(cds_status.archive_fd);
-    cds_status.archive_fd = 0;
+    close_archive(&cds_status.archive_fd);
     return NULL;
 }
 
@@ -577,11 +573,12 @@ PyCDS_MoveInRec(PyObject *op, PyObject **target, PyObject **source_ref)
         else if (size == 1) {
             // not static single byte
             // maybe from marshal?
-#define BS(...) (&_Py_SINGLETON(bytes_characters __VA_OPT__([) __VA_ARGS__ __VA_OPT__(])))
-            assert((void *)BS(256) == (void *)(BS() + 1));
-            *target = (PyObject *)BS((Py_UCS1)PyBytes_AS_STRING(op)[0]);
-            assert(*target >= (PyObject *)BS());
-            assert(*target < (PyObject *)(BS() + 1));
+#define BS (&_Py_SINGLETON(bytes_characters))
+#define BSi(i) (&_Py_SINGLETON(bytes_characters[i]))
+            assert((void *)BSi(256) == (void *)(BS + 1));
+            *target = (PyObject *)BSi((Py_UCS1)PyBytes_AS_STRING(op)[0]);
+            assert(*target >= (PyObject *)BS);
+            assert(*target < (PyObject *)(BS + 1));
 #undef BS
             goto _return;
         }
