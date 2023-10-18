@@ -1,10 +1,10 @@
 [project]
 name = "code-data-share"
-version = "0.0.5"
+version = "0.1.0"
 readme = "README.rst"
 requires-python = ">=3.8"
 classifiers = [
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Operating System :: MacOS :: MacOS X',
     'Operating System :: Microsoft :: Windows',
     'Operating System :: POSIX :: Linux',
