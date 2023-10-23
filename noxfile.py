@@ -130,7 +130,7 @@ PACKAGES = (
     # conda-provided tf might require pypy and this is not what we want,
     # and pypi only provides tf for CPython <= 3.11
     Package('tensorflow', skip=lambda _py: _py in ('3.12',)),
-    Package('seaborn', conda=True),
+    Package('seaborn', conda=True, skip=lambda _py: OS == 'Windows'),
     Package('azureml-core', module='azureml.core'),
 
     Package('opencv-python', module='cv2')

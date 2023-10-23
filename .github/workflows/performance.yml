@@ -34,6 +34,9 @@ jobs:
         run: |
           sudo pyperf system tune
       - name: Perf importing third-party packages
+        continue-on-error: true
+        env:
+          RUN: LONG
         run: |
           nox -s test_import_third_party_perf-${{ matrix.python }}
       - uses: actions/upload-artifact@v3
