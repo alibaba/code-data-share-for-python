@@ -1,9 +1,8 @@
 name: performance
 
 on:
-#  push:
-#    branches: [ main ]
-#    paths: [ '**.py', 'src/**' ]
+  release:
+    types: [ published ]
   workflow_dispatch:
 
 concurrency:
@@ -14,7 +13,9 @@ jobs:
   perf-import:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        python: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
         os: [ ubuntu-latest, macOS-latest, windows-latest ]
 
     steps:
@@ -28,9 +29,26 @@ jobs:
           python -m pip install nox pyperf
       - name: Perf importing third-party packages
         run: |
-          sh scripts/perf_import.sh
+          nox -s test_import_third_party_perf-${{ matrix.python }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: perf-import
+          path: "*.json"
+
+  perf-import-result:
+    runs-on: ubuntu-latest
+    needs: [ perf-import ]
+    steps:
+      - uses: actions/setup-python@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: perf-import
+          path: ./
 
   pyperformance:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

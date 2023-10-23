@@ -43,6 +43,16 @@ def _py_version(session: nox.Session):
     return out
 
 
+def _perf_config() -> t.List[str]:
+    result = []
+    _run = os.environ.get('RUN', '').lower()
+    if _run in ('fast', 'short'):
+        result.append('--fast')
+    elif _run in ('long', 'rigorous'):
+        result.append('--rigorous')
+    return result
+
+
 def _self_tests(session: nox.Session):
     session.install(".")
     session.install("pytest")
@@ -180,17 +190,18 @@ for py in SUPPORTED_PYTHONS:
         raw_out = f'perf-import-{session.python}-raw'
         cds_out = f'perf-import-{session.python}-cds'
 
-        session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
+        base_cmd = ['pyperf', 'command'] + _perf_config() + [f'--name={package.name}']
+
+        session.run(*base_cmd, f'--append={raw_out}.json',
                     'python', '-c', package.import_stmt)
-        session.run('pyperf', 'command', '--fast', f'--append={cds_out}.json', f'--name={package.name}',
-                    '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
+        session.run(*base_cmd, f'--append={cds_out}.json', '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
                     'python', '-c', package.import_stmt,
                     env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
         ci_session_cleanup()
 
 
-def _pyperformance(session: nox.Session, pyperformance_args=None):
+def _pyperformance(session: nox.Session, pyperformance_cmd=None):
     session.install(CDS_PYPERFORMANCE)
 
     configs = [
@@ -205,36 +216,23 @@ def _pyperformance(session: nox.Session, pyperformance_args=None):
     tmp = session.create_tmp()
     session.chdir(tmp)
 
-    if pyperformance_args is None:
-        pyperformance_args = ['pyperformance', 'run']
+    if pyperformance_cmd is None:
+        pyperformance_cmd = ['pyperformance', 'run']
+
+    pyperformance_cmd += _perf_config()
 
     cmd_exc = None
     for out, args in configs:
         if os.path.exists(out):
             session.run('mv', out, out + '.old')
         try:
-            session.run(*(pyperformance_args + args), f'--out={out}')
+            session.run(*(pyperformance_cmd + args), f'--out={out}')
         except CommandFailed as e:
             if cmd_exc is None:
                 cmd_exc = e
 
     if cmd_exc is not None:
         raise cmd_exc
-
-
-@nox.session(venv_backend='venv')
-def pyperformance_current(session: nox.Session):
-    _pyperformance(session, ['pyperformance', 'run', '--fast'])
-
-
-@nox.session(python=SUPPORTED_PYTHONS)
-def pyperformance(session: nox.Session):
-    _pyperformance(session, ['pyperformance', 'run', '--fast'])
-
-
-@nox.session(python=SUPPORTED_PYTHONS)
-def pyperformance_looong(session: nox.Session):
-    _pyperformance(session, ['pyperformance', 'run', '--rigorous'])
 
 
 @nox.session(venv_backend='venv')
