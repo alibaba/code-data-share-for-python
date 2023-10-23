@@ -45,12 +45,29 @@ jobs:
     needs: [ perf-import ]
     steps:
       - uses: actions/setup-python@v4
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyperf
 
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
           name: perf-import
           path: ./
+      - name: Result
+        run: |
+          for VERSION in 3.8 3.9 3.10 3.11 3.12
+          do
+            for OS in linux macos windows
+            do
+              pyperf compare_to perf-import-$VERSION-$OS-raw.json perf-import-$VERSION-$OS-cds.json | tee perf-import-$VERSION-$OS.table
+            done
+          done
+      - uses: actions/upload-artifact@v3
+        with:
+          name: perf-import
+          path: "*.table"
 
   pyperformance:
     if: false
