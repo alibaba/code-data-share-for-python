@@ -59,9 +59,9 @@ jobs:
         run: |
           for VERSION in 3.8 3.9 3.10 3.11 3.12
           do
-            for OS in linux macos windows
+            for OS in linux darwin windows
             do
-              pyperf compare_to perf-import-$VERSION-$OS-raw.json perf-import-$VERSION-$OS-cds.json | tee perf-import-$VERSION-$OS.table
+              pyperf compare_to perf-import-$VERSION-$OS-raw.json perf-import-$VERSION-$OS-cds.json --table | tee perf-import-$VERSION-$OS.table
             done
           done
       - uses: actions/upload-artifact@v3
