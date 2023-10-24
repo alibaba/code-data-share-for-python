@@ -20,7 +20,7 @@ PYCDS_ROOT = os.path.dirname(__file__)
 
 GA = os.environ.get('GITHUB_ACTIONS') == 'true'
 
-CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
+CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds-dev'
 
 
 def _clean_nox():
@@ -203,11 +203,11 @@ for py in SUPPORTED_PYTHONS:
 
 
 @nox.session(venv_backend='venv')
-def pyperformance(session: nox.Session, pyperformance_cmd=None):
+def pyperformance(session: nox.Session):
     session.install(CDS_PYPERFORMANCE)
 
     configs = [
-        (os.path.realpath(f'pyperformance-{_py_version(session)}-{config_name}.json'), config_args)
+        (os.path.realpath(f'pyperformance-{_py_version(session)}-{OS.lower()}-{config_name}.json'), config_args)
         for (config_name, config_args) in [
             ('raw', []),
             ('cds-site', ['--install-cds', PYCDS_ROOT]),
@@ -218,17 +218,14 @@ def pyperformance(session: nox.Session, pyperformance_cmd=None):
     tmp = session.create_tmp()
     session.chdir(tmp)
 
-    if pyperformance_cmd is None:
-        pyperformance_cmd = ['pyperformance', 'run']
-
-    pyperformance_cmd += _perf_config()
+    pyperformance_cmd = ['pyperformance', 'run'] + _perf_config()
 
     cmd_exc = None
     for out, args in configs:
         if os.path.exists(out):
             shutil.move(out, out + '.old')
         try:
-            session.run(*(pyperformance_cmd + args), f'--out={repr(out)}')
+            session.run(*(pyperformance_cmd + args), f'--out={out}')
         except CommandFailed as e:
             if cmd_exc is None:
                 cmd_exc = e
