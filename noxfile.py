@@ -3,6 +3,7 @@ Ref: https://github.com/scikit-build/scikit-build/blob/master/noxfile.py
 """
 import os
 import platform
+import shutil
 import typing as t
 
 import nox
@@ -201,7 +202,8 @@ for py in SUPPORTED_PYTHONS:
         ci_session_cleanup()
 
 
-def _pyperformance(session: nox.Session, pyperformance_cmd=None):
+@nox.session(venv_backend='venv')
+def pyperformance(session: nox.Session, pyperformance_cmd=None):
     session.install(CDS_PYPERFORMANCE)
 
     configs = [
@@ -224,9 +226,9 @@ def _pyperformance(session: nox.Session, pyperformance_cmd=None):
     cmd_exc = None
     for out, args in configs:
         if os.path.exists(out):
-            session.run('mv', out, out + '.old')
+            shutil.move(out, out + '.old')
         try:
-            session.run(*(pyperformance_cmd + args), f'--out={out}')
+            session.run(*(pyperformance_cmd + args), f'--out={repr(out)}')
         except CommandFailed as e:
             if cmd_exc is None:
                 cmd_exc = e
