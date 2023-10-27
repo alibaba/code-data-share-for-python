@@ -90,8 +90,6 @@ jobs:
           python -m pip install nox
       - name: Pyperformance tests against cds
         continue-on-error: true
-        env:
-          RUN: LONG
         run: |
           nox -s pyperformance
       - uses: actions/upload-artifact@v3
