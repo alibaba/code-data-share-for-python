@@ -22,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python }}
-        uses: deadsnakes/action@v3.0.1
+        uses: deadsnakes/action@v3.1.0
         with:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
