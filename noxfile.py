@@ -3,6 +3,7 @@ Ref: https://github.com/scikit-build/scikit-build/blob/master/noxfile.py
 """
 import os
 import platform
+import shutil
 import typing as t
 
 import nox
@@ -19,7 +20,7 @@ PYCDS_ROOT = os.path.dirname(__file__)
 
 GA = os.environ.get('GITHUB_ACTIONS') == 'true'
 
-CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds'
+CDS_PYPERFORMANCE = 'git+https://github.com/oraluben/pyperformance.git@cds-dev'
 
 
 def _clean_nox():
@@ -41,6 +42,16 @@ def _py_version(session: nox.Session):
                            silent=True)
     out = out.strip()
     return out
+
+
+def _perf_config() -> t.List[str]:
+    result = []
+    _run = os.environ.get('RUN', '').lower()
+    if _run in ('fast', 'short'):
+        result.append('--fast')
+    elif _run in ('long', 'rigorous'):
+        result.append('--rigorous')
+    return result
 
 
 def _self_tests(session: nox.Session):
@@ -120,7 +131,7 @@ PACKAGES = (
     # conda-provided tf might require pypy and this is not what we want,
     # and pypi only provides tf for CPython <= 3.11
     Package('tensorflow', skip=lambda _py: _py in ('3.12',)),
-    Package('seaborn', conda=True),
+    Package('seaborn', conda=True, skip=lambda _py: OS == 'Windows'),
     Package('azureml-core', module='azureml.core'),
 
     Package('opencv-python', module='cv2')
@@ -177,24 +188,26 @@ for py in SUPPORTED_PYTHONS:
         session.run('python', '-c', package.import_stmt, env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img}, log=False)
         logger.info(f'finish generating CDS archive for {package.name}')
 
-        raw_out = f'perf-import-{session.python}-raw'
-        cds_out = f'perf-import-{session.python}-cds'
+        raw_out = f'perf-import-{session.python}-{OS.lower()}-raw'
+        cds_out = f'perf-import-{session.python}-{OS.lower()}-cds'
 
-        session.run('pyperf', 'command', '--fast', f'--append={raw_out}.json', f'--name={package.name}',
+        base_cmd = ['pyperf', 'command'] + _perf_config() + [f'--name={package.name}']
+
+        session.run(*base_cmd, f'--append={raw_out}.json',
                     'python', '-c', package.import_stmt)
-        session.run('pyperf', 'command', '--fast', f'--append={cds_out}.json', f'--name={package.name}',
-                    '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
+        session.run(*base_cmd, f'--append={cds_out}.json', '--inherit-environ=PYCDSMODE,PYCDSARCHIVE',
                     'python', '-c', package.import_stmt,
                     env={'PYCDSMODE': 'SHARE', 'PYCDSARCHIVE': img})
 
         ci_session_cleanup()
 
 
-def _pyperformance(session: nox.Session, pyperformance_args=None):
+@nox.session(venv_backend='venv')
+def pyperformance(session: nox.Session):
     session.install(CDS_PYPERFORMANCE)
 
     configs = [
-        (os.path.realpath(f'pyperformance-{_py_version(session)}-{config_name}.json'), config_args)
+        (os.path.realpath(f'pyperformance-{_py_version(session)}-{OS.lower()}-{config_name}.json'), config_args)
         for (config_name, config_args) in [
             ('raw', []),
             ('cds-site', ['--install-cds', PYCDS_ROOT]),
@@ -205,36 +218,20 @@ def _pyperformance(session: nox.Session, pyperformance_args=None):
     tmp = session.create_tmp()
     session.chdir(tmp)
 
-    if pyperformance_args is None:
-        pyperformance_args = ['pyperformance', 'run']
+    pyperformance_cmd = ['pyperformance', 'run'] + _perf_config()
 
     cmd_exc = None
     for out, args in configs:
         if os.path.exists(out):
-            session.run('mv', out, out + '.old')
+            shutil.move(out, out + '.old')
         try:
-            session.run(*(pyperformance_args + args), f'--out={out}')
+            session.run(*(pyperformance_cmd + args), f'--out={out}')
         except CommandFailed as e:
             if cmd_exc is None:
                 cmd_exc = e
 
     if cmd_exc is not None:
         raise cmd_exc
-
-
-@nox.session(venv_backend='venv')
-def pyperformance_current(session: nox.Session):
-    _pyperformance(session, ['pyperformance', 'run', '--fast'])
-
-
-@nox.session(python=SUPPORTED_PYTHONS)
-def pyperformance(session: nox.Session):
-    _pyperformance(session, ['pyperformance', 'run', '--fast'])
-
-
-@nox.session(python=SUPPORTED_PYTHONS)
-def pyperformance_looong(session: nox.Session):
-    _pyperformance(session, ['pyperformance', 'run', '--rigorous'])
 
 
 @nox.session(venv_backend='venv')
