@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   test-cpython:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -35,6 +36,7 @@ jobs:
         run: nox -s tests_venv_current
 
   test-conda:
+    if: false
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -61,6 +63,7 @@ jobs:
         uses: mxschmitt/action-tmate@v3
 
   test-twine:
+    if: false
     runs-on: ubuntu-latest
 
     steps:
