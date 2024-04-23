@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-sdist
           path: |
             dist/*.tar.gz
   build_wheels:
@@ -45,7 +45,7 @@ jobs:
         run: python -m cibuildwheel --output-dir dist
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
+          name: dist-${{ matrix.os }}
           path: |
             dist/*.whl
   publish:
@@ -60,11 +60,12 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: dist
+          pattern: dist-*
           path: dist
+          merge-multiple: true
 
       - name: Upload wheels to Github release
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
